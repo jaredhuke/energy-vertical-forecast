@@ -26,6 +26,23 @@ npm run dev        # http://localhost:3120
 Working data lives in your browser (localStorage) as you edit — nothing is lost
 on refresh.
 
+## Share it (static site)
+
+Two shareable builds. Seed data is bundled at build time, so both work offline
+with no server calls.
+
+```bash
+npm run build          # → dist/         static site for any host (GitLab Pages, S3, python -m http.server)
+npm run build:share    # → dist-share/index.html   ONE self-contained file
+```
+
+`dist-share/index.html` inlines all JS/CSS and the seed — **email it, drop it in
+Teams, or double-click to open** (works from `file://`, no server). Rename it to
+anything (e.g. `Energy-Vertical-Forecast.html`). Each recipient gets their own
+local copy; edits save to their browser. (The git "Connect repo" sync only works
+when served over http/localhost, not from `file://` — use **Import/JSON** to move
+data in the single-file version.)
+
 ## Data storage & collaboration (git.epam.com)
 
 **Working copy:** your browser's localStorage (survives refresh).

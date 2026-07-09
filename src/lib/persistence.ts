@@ -1,6 +1,15 @@
-import type { ForecastState, Opportunity } from '../types'
+import type { ForecastState, Opportunity, Person, StageDef } from '../types'
 import { effectiveProbability, stageName } from './funnel'
 import { addWeeks, isoWeekNum } from './weeks'
+
+// Seed data bundled at build time (not fetched) so the app works from any
+// host AND from a single-file / file:// build with no network.
+import rosterSeed from '../../public/data/roster.json'
+import stagesSeed from '../../public/data/stages.json'
+const oppModules = import.meta.glob('../../public/data/opportunities/*.json', {
+  eager: true,
+  import: 'default',
+})
 
 /** The persisted shape (everything except transient UI state). */
 export type Bundle = Pick<ForecastState, 'roster' | 'stages' | 'opportunities' | 'snapshots'>
@@ -82,19 +91,16 @@ export function exportCsv(state: ForecastState) {
   download('forecast-allocations.csv', rows.join('\n'), 'text/csv')
 }
 
-/** Load seed data shipped in /public/data on first run. */
+/** Seed data (bundled from /public/data at build time) for first run. */
 export async function loadSeed(): Promise<Bundle | null> {
-  const base = import.meta.env.BASE_URL
   try {
-    const manifest = await fetch(`${base}data/manifest.json`).then((r) => r.json())
-    const roster = await fetch(`${base}data/roster.json`).then((r) => r.json())
-    const stages = await fetch(`${base}data/stages.json`).then((r) => r.json())
-    const opportunities: Opportunity[] = await Promise.all(
-      (manifest.opportunities as string[]).map((id) =>
-        fetch(`${base}data/opportunities/${id}.json`).then((r) => r.json()),
-      ),
-    )
-    return { roster, stages, opportunities, snapshots: [] }
+    const opportunities = Object.values(oppModules) as Opportunity[]
+    return {
+      roster: rosterSeed as Person[],
+      stages: stagesSeed as StageDef[],
+      opportunities: opportunities.sort((a, b) => a.id.localeCompare(b.id)),
+      snapshots: [],
+    }
   } catch (e) {
     console.warn('Seed load failed', e)
     return null
