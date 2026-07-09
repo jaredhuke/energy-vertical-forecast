@@ -83,7 +83,7 @@ export function Dashboard() {
       <div className="section-title" style={{ margin: 0 }}>Energy team utilization</div>
       <div className="kpis">
         <div className="kpi">
-          <div className="label">Avg peak utilization</div>
+          <div className="label">Average peak utilization</div>
           <div className="value num" style={{ color: avgPeak > 1 ? 'var(--warn)' : 'var(--blue)' }}>{fmtPct(avgPeak)}</div>
           <div className="delta flat">{utils.length} energy people</div>
         </div>
@@ -188,7 +188,7 @@ export function Dashboard() {
           ) : (
             <table className="sheet">
               <thead>
-                <tr><th>Person</th><th className="num">Peak</th><th className="num">Cap</th><th>Status</th></tr>
+                <tr><th>Person</th><th className="num">Peak</th><th className="num">Capacity</th><th>Status</th></tr>
               </thead>
               <tbody>
                 {loads.slice(0, 8).map((l) => (
