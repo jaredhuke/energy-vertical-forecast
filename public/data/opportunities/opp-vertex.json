@@ -1,0 +1,16 @@
+{
+  "id": "opp-vertex",
+  "name": "Vertex Solar Portfolio Optimization",
+  "client": "Vertex Grid",
+  "stageId": "lead",
+  "startWeek": "2026-08-10",
+  "durationWeeks": 6,
+  "notes": "Early conversation — portfolio optimization across solar assets.",
+  "updatedBy": "seed",
+  "assignments": [
+    { "id": "a-vx-1", "personId": "p-mokafor", "role": "Business Analyst", "group": "energy",
+      "fte": { "0": 0.3, "1": 0.3, "2": 0.3, "3": 0.3, "4": 0.3, "5": 0.3 } },
+    { "id": "a-vx-2", "role": "Data Scientist", "group": "delivery",
+      "fte": { "1": 0.5, "2": 0.5, "3": 0.5, "4": 0.5, "5": 0.5 } }
+  ]
+}

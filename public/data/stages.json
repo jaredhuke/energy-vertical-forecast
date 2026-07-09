@@ -1,0 +1,7 @@
+[
+  { "id": "lead", "name": "Lead", "probability": 0.05 },
+  { "id": "qualified", "name": "Qualified", "probability": 0.2 },
+  { "id": "proposal", "name": "Proposal", "probability": 0.4 },
+  { "id": "negotiation", "name": "Negotiation", "probability": 0.7 },
+  { "id": "closed", "name": "Closed", "probability": 1.0 }
+]

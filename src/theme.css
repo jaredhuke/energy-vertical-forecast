@@ -1,0 +1,209 @@
+/* ==========================================================================
+   Energy Vertical Forecast — visual system
+   Dark foundation, muted neutrals, blue/purple accents reserved for
+   interactive + status elements. Energy = blue, Delivery = purple, so the
+   two resourcing lanes stay legible in every chart. Numbers are tabular.
+   ========================================================================== */
+:root {
+  --bg: #0d0f15;
+  --bg-2: #111420;
+  --surface: #161a28;
+  --surface-2: #1b2032;
+  --surface-3: #212840;
+  --border: #262c40;
+  --border-strong: #38415e;
+
+  --text: #e7e9f2;
+  --text-dim: #a3a9c0;
+  --text-faint: #71768f;
+
+  --blue: #5b8cff;
+  --purple: #a883ff;
+  --energy: #5b8cff;
+  --delivery: #b07bff;
+  --grad: linear-gradient(135deg, #5b8cff 0%, #a06bff 100%);
+
+  --good: #4ec48c;
+  --warn: #f2ab4b;
+  --bad: #ef5d74;
+
+  --r-sm: 6px;
+  --r: 10px;
+  --r-lg: 14px;
+  --shadow: 0 6px 24px rgba(0, 0, 0, 0.35);
+  --mono: 'SF Mono', 'JetBrains Mono', ui-monospace, Menlo, monospace;
+  --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+}
+
+* { box-sizing: border-box; }
+html, body, #root { height: 100%; margin: 0; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 14px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+}
+.num { font-variant-numeric: tabular-nums; }
+
+/* ---- app shell ---- */
+.app { display: flex; flex-direction: column; height: 100%; }
+.header {
+  display: flex; align-items: center; gap: 18px;
+  padding: 12px 20px;
+  background: var(--bg-2);
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+.brand { display: flex; align-items: baseline; gap: 10px; }
+.brand h1 { font-size: 15px; font-weight: 650; margin: 0; letter-spacing: 0.2px; }
+.brand .dot {
+  width: 9px; height: 9px; border-radius: 50%;
+  background: var(--grad); display: inline-block;
+}
+.brand .sub { color: var(--text-faint); font-size: 12px; }
+
+.tabs { display: flex; gap: 4px; }
+.tab {
+  background: transparent; border: 1px solid transparent; color: var(--text-dim);
+  padding: 7px 14px; border-radius: var(--r-sm); cursor: pointer; font-size: 13px;
+  font-family: inherit;
+}
+.tab:hover { color: var(--text); background: var(--surface); }
+.tab.active { color: var(--text); background: var(--surface-2); border-color: var(--border-strong); }
+.tab .count { color: var(--text-faint); margin-left: 6px; font-variant-numeric: tabular-nums; }
+.tab.active .count { color: var(--blue); }
+
+.spacer { flex: 1; }
+
+/* ---- buttons ---- */
+button { font-family: inherit; }
+.btn {
+  background: var(--surface-2); color: var(--text); border: 1px solid var(--border-strong);
+  padding: 7px 13px; border-radius: var(--r-sm); cursor: pointer; font-size: 13px;
+  display: inline-flex; align-items: center; gap: 7px; white-space: nowrap;
+}
+.btn:hover { background: var(--surface-3); border-color: #46507040; }
+.btn.primary {
+  background: var(--grad); border: none; color: #fff; font-weight: 550;
+}
+.btn.primary:hover { filter: brightness(1.08); }
+.btn.ghost { background: transparent; border-color: var(--border); color: var(--text-dim); }
+.btn.ghost:hover { color: var(--text); border-color: var(--border-strong); }
+.btn.sm { padding: 4px 9px; font-size: 12px; }
+.btn.danger:hover { border-color: var(--bad); color: var(--bad); }
+.btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+.icon-btn {
+  width: 26px; height: 26px; display: inline-flex; align-items: center; justify-content: center;
+  border-radius: var(--r-sm); border: 1px solid var(--border); background: var(--surface);
+  color: var(--text-dim); cursor: pointer; font-size: 14px; line-height: 1;
+}
+.icon-btn:hover { color: var(--text); border-color: var(--border-strong); }
+
+/* ---- inputs ---- */
+input, select, textarea {
+  background: var(--bg); color: var(--text); border: 1px solid var(--border);
+  border-radius: var(--r-sm); padding: 6px 9px; font-family: inherit; font-size: 13px;
+}
+input:focus, select:focus, textarea:focus {
+  outline: none; border-color: var(--blue); box-shadow: 0 0 0 2px #5b8cff30;
+}
+input.plain {
+  background: transparent; border-color: transparent; padding: 4px 6px;
+}
+input.plain:hover { border-color: var(--border); }
+label.field { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--text-dim); }
+
+/* ---- main / cards ---- */
+.main { flex: 1; overflow: auto; padding: 20px; }
+.grid { display: grid; gap: 16px; }
+.card {
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--r);
+  padding: 16px;
+}
+.card h2 { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.6px;
+  color: var(--text-dim); margin: 0 0 12px; }
+.card .h-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; flex-wrap: wrap; gap: 10px; }
+.legend { flex-wrap: wrap; }
+.card .h-row h2 { margin: 0; }
+
+/* ---- KPI tiles ---- */
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 14px; }
+.kpi { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); padding: 14px 16px; }
+.kpi .label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-faint); }
+.kpi .value { font-size: 26px; font-weight: 600; margin-top: 4px; font-variant-numeric: tabular-nums; }
+.kpi .delta { font-size: 12px; margin-top: 3px; font-variant-numeric: tabular-nums; }
+.delta.up { color: var(--good); }
+.delta.down { color: var(--bad); }
+.delta.flat { color: var(--text-faint); }
+
+/* ---- tables ---- */
+table.sheet { width: 100%; border-collapse: collapse; font-size: 13px; }
+table.sheet th {
+  text-align: left; font-weight: 500; color: var(--text-faint); font-size: 11px;
+  text-transform: uppercase; letter-spacing: 0.4px; padding: 8px 10px; border-bottom: 1px solid var(--border);
+  position: sticky; top: 0; background: var(--surface);
+}
+table.sheet td { padding: 4px 10px; border-bottom: 1px solid var(--border); }
+table.sheet tr:hover td { background: var(--surface-2); }
+table.sheet td.num, table.sheet th.num { text-align: right; font-variant-numeric: tabular-nums; }
+
+/* ---- chips / badges ---- */
+.chip {
+  display: inline-flex; align-items: center; gap: 5px; padding: 2px 9px; border-radius: 999px;
+  font-size: 12px; border: 1px solid var(--border-strong); color: var(--text-dim); background: var(--surface-2);
+}
+.chip.energy { border-color: #5b8cff55; color: #a9c2ff; }
+.chip.delivery { border-color: #b07bff55; color: #d3b9ff; }
+.chip.warn { border-color: #f2ab4b66; color: var(--warn); background: #f2ab4b12; }
+.chip.good { border-color: #4ec48c55; color: var(--good); background: #4ec48c12; }
+.swatch { width: 8px; height: 8px; border-radius: 2px; display: inline-block; }
+.swatch.energy { background: var(--energy); }
+.swatch.delivery { background: var(--delivery); }
+
+/* ---- FTE grid ---- */
+.fte-grid { overflow-x: auto; border: 1px solid var(--border); border-radius: var(--r); }
+.fte-grid table { border-collapse: collapse; font-size: 12px; }
+.fte-grid th, .fte-grid td { border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+.fte-grid th { padding: 6px 8px; color: var(--text-faint); font-weight: 500; background: var(--surface-2); white-space: nowrap; }
+.fte-grid th.wk { text-align: center; min-width: 46px; }
+.fte-grid th.wk .wknum { display: block; font-size: 10px; color: var(--text-faint); }
+.fte-grid td.rowhead { padding: 5px 10px; white-space: nowrap; background: var(--surface); position: sticky; left: 0; z-index: 1; min-width: 210px; }
+.fte-grid input.cell {
+  width: 46px; text-align: center; border: none; background: transparent; border-radius: 0;
+  padding: 6px 2px; color: var(--text); font-variant-numeric: tabular-nums;
+}
+.fte-grid input.cell:focus { box-shadow: inset 0 0 0 2px var(--blue); }
+.fte-grid td.filled { background: #5b8cff14; }
+.fte-grid td.filled.delivery { background: #b07bff14; }
+.fte-grid tfoot td { background: var(--surface-2); font-variant-numeric: tabular-nums; color: var(--text-dim); padding: 6px 8px; text-align: center; }
+.fte-grid tfoot td.rowhead { text-align: left; color: var(--text-faint); }
+
+/* ---- misc ---- */
+.row { display: flex; align-items: center; gap: 10px; }
+.wrap { flex-wrap: wrap; }
+.muted { color: var(--text-dim); }
+.faint { color: var(--text-faint); }
+.stepper { display: inline-flex; align-items: center; border: 1px solid var(--border-strong); border-radius: var(--r-sm); overflow: hidden; flex-shrink: 0; }
+.stepper button { white-space: nowrap; }
+.stepper button { background: var(--surface-2); border: none; color: var(--text); width: 30px; height: 30px; cursor: pointer; font-size: 16px; }
+.stepper button:hover { background: var(--surface-3); }
+.stepper .val { padding: 0 12px; font-variant-numeric: tabular-nums; min-width: 64px; text-align: center; font-size: 13px; }
+/* segmented toggle (committed / weighted) */
+.seg { display: inline-flex; border: 1px solid var(--border-strong); border-radius: var(--r-sm); overflow: hidden; flex-shrink: 0; }
+.seg button { background: transparent; border: none; color: var(--text-dim); padding: 6px 13px; cursor: pointer; font-size: 12px; white-space: nowrap; }
+.seg button:hover { color: var(--text); }
+.seg button.on { background: var(--surface-3); color: var(--text); }
+.empty { color: var(--text-faint); text-align: center; padding: 40px; }
+.list-row { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border: 1px solid var(--border); border-radius: var(--r); background: var(--surface); cursor: pointer; }
+.list-row:hover { border-color: var(--border-strong); background: var(--surface-2); }
+.list-row.active { border-color: var(--blue); }
+.dirty-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--warn); display: inline-block; }
+.legend { display: flex; gap: 14px; font-size: 12px; color: var(--text-dim); align-items: center; }
+.legend span { display: inline-flex; align-items: center; gap: 5px; }
+.bar-track { background: var(--surface-2); border-radius: 3px; overflow: hidden; height: 8px; }
+.section-title { font-size: 12px; text-transform: uppercase; letter-spacing: 0.6px; color: var(--text-faint); margin: 4px 0 10px; }
+a { color: var(--blue); }
+.hint { font-size: 12px; color: var(--text-faint); }
