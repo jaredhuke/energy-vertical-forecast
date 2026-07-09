@@ -93,14 +93,14 @@ export function Dashboard() {
           <div className="delta flat">{over.length ? 'above capacity' : 'all within capacity'}</div>
         </div>
         <div className="kpi">
-          <div className="label">Weighted pipeline · FTE-weeks</div>
+          <div className="label">Weighted forecast · FTE-weeks</div>
           <div className="value num">{t.weighted.toFixed(1)}</div>
           <Delta now={t.weighted} was={last?.weightedFte ?? null} />
         </div>
         <div className="kpi">
           <div className="label">Peak weighted week</div>
           <div className="value num">{peak.w.toFixed(1)}</div>
-          <div className="delta flat">{weekLabel(peak.wWeek)} · {peak.c.toFixed(1)} committed</div>
+          <div className="delta flat">{weekLabel(peak.wWeek)} · {peak.c.toFixed(1)} signed</div>
         </div>
       </div>
 
@@ -137,11 +137,11 @@ export function Dashboard() {
             <div className="legend">
               <span><span className="swatch energy" /> Energy</span>
               <span><span className="swatch delivery" /> Delivery</span>
-              <span style={{ color: 'var(--text-faint)' }}>--- {weightedView ? 'committed' : 'weighted'}</span>
+              <span style={{ color: 'var(--text-faint)' }}>--- {weightedView ? 'signed' : 'weighted forecast'}</span>
             </div>
             <div className="seg" role="tablist">
-              <button className={!weightedView ? 'on' : ''} onClick={() => setWeightedView(false)}>Committed</button>
-              <button className={weightedView ? 'on' : ''} onClick={() => setWeightedView(true)}>Weighted</button>
+              <button className={weightedView ? 'on' : ''} onClick={() => setWeightedView(true)}>Weighted forecast</button>
+              <button className={!weightedView ? 'on' : ''} onClick={() => setWeightedView(false)}>Signed</button>
             </div>
           </div>
         </div>
