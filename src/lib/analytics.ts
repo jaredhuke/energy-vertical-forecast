@@ -153,3 +153,117 @@ export function totals(demand: WeekDemand[]) {
   }
   return { committed, weighted }
 }
+
+// ---------------------------------------------------------------------------
+// Revenue — the value energy people pull through. Forecast deals contribute
+// weighted pipeline ($ = deal value × close %); signed deals are actual booked
+// revenue (100%). "Influence" per person/role = the deals they are staffed on.
+// ---------------------------------------------------------------------------
+
+export function oppWeightedRevenue(state: ForecastState, o: Opportunity): number {
+  if (o.booking === 'signed') return 0
+  const prob = effectiveProbability(state.stages, o.stageId, o.probabilityOverride)
+  return (o.dealValue || 0) * prob
+}
+
+export function oppBookedRevenue(o: Opportunity): number {
+  return o.booking === 'signed' ? o.dealValue || 0 : 0
+}
+
+export function revenueTotals(state: ForecastState) {
+  let tcv = 0
+  let weighted = 0
+  let booked = 0
+  let signedCount = 0
+  let forecastCount = 0
+  for (const o of state.opportunities) {
+    tcv += o.dealValue || 0
+    if (o.booking === 'signed') {
+      booked += o.dealValue || 0
+      signedCount++
+    } else {
+      weighted += oppWeightedRevenue(state, o)
+      forecastCount++
+    }
+  }
+  return { tcv, weighted, booked, signedCount, forecastCount, blended: weighted + booked }
+}
+
+export interface RoleRevenue {
+  role: string
+  deals: number
+  people: number
+  weighted: number
+  booked: number
+}
+
+/** Per energy-role-type, aggregated over DISTINCT deals that use that role. */
+export function revenueByEnergyRole(state: ForecastState): RoleRevenue[] {
+  const map = new Map<string, { deals: Set<string>; people: Set<string>; weighted: number; booked: number }>()
+  for (const o of state.opportunities) {
+    const energy = o.assignments.filter((a) => a.group === 'energy')
+    const rolesInDeal = new Set(energy.map((a) => a.role))
+    for (const role of rolesInDeal) {
+      const rec = map.get(role) || { deals: new Set(), people: new Set(), weighted: 0, booked: 0 }
+      rec.deals.add(o.id)
+      rec.weighted += oppWeightedRevenue(state, o)
+      rec.booked += oppBookedRevenue(o)
+      map.set(role, rec)
+    }
+    for (const a of energy) if (a.personId) map.get(a.role)?.people.add(a.personId)
+  }
+  return [...map.entries()]
+    .map(([role, r]) => ({ role, deals: r.deals.size, people: r.people.size, weighted: r.weighted, booked: r.booked }))
+    .sort((a, b) => b.weighted + b.booked - (a.weighted + a.booked))
+}
+
+export interface PersonUtilization {
+  person: Person
+  weekly: number[] // committed FTE aligned to `weeks`
+  cap: number
+  peak: number
+  avg: number // over active weeks
+  peakPct: number
+  avgPct: number
+  overWeeks: number
+  weighted: number // influenced weighted pipeline $
+  booked: number // influenced booked $
+  deals: number
+}
+
+/** Per energy person: weekly forecast utilization + influenced revenue. */
+export function energyUtilization(state: ForecastState, weeks: string[]): PersonUtilization[] {
+  const loads = new Map(personLoads(state, weeks).map((l) => [l.person.id, l]))
+  const out: PersonUtilization[] = []
+  for (const p of state.roster.filter((x) => x.group === 'energy')) {
+    const load = loads.get(p.id)
+    const weekly = weeks.map((w) => load?.byWeek[w]?.committed || 0)
+    const cap = p.capacity || 1
+    const active = weekly.filter((v) => v > 0)
+    const peak = weekly.reduce((m, v) => Math.max(m, v), 0)
+    const avg = active.length ? active.reduce((a, b) => a + b, 0) / active.length : 0
+    let weighted = 0
+    let booked = 0
+    const deals = new Set<string>()
+    for (const o of state.opportunities) {
+      if (!o.assignments.some((a) => a.personId === p.id)) continue
+      deals.add(o.id)
+      weighted += oppWeightedRevenue(state, o)
+      booked += oppBookedRevenue(o)
+    }
+    out.push({
+      person: p,
+      weekly,
+      cap,
+      peak,
+      avg,
+      peakPct: peak / cap,
+      avgPct: avg / cap,
+      overWeeks: load?.overWeeks.length ?? 0,
+      weighted,
+      booked,
+      deals: deals.size,
+    })
+  }
+  return out.sort((a, b) => b.peakPct - a.peakPct)
+}

@@ -6,7 +6,7 @@ import { demandByWeek, horizon, totals } from '../lib/analytics'
 import type { Bundle } from '../lib/persistence'
 import { addWeeks } from '../lib/weeks'
 
-export type View = 'dashboard' | 'opportunities' | 'roster' | 'stages'
+export type View = 'dashboard' | 'opportunities' | 'utilization' | 'revenue' | 'roster' | 'stages'
 
 function uid(prefix: string): string {
   const rnd =
@@ -149,6 +149,8 @@ export const useStore = create<Store>()(
           name: 'New opportunity',
           client: '',
           stageId: get().stages[0]?.id ?? 'lead',
+          dealValue: 0,
+          booking: 'forecast',
           startWeek: mondayKey(),
           durationWeeks: 8,
           assignments: [],
@@ -270,6 +272,26 @@ export const useStore = create<Store>()(
     }),
     {
       name: 'evf-state-v1',
+      version: 2,
+      // Backfill deal value + booking status onto pre-existing opportunities
+      // so the Revenue/Utilization views have data without a re-seed.
+      migrate: (persisted, _from) => {
+        const s = persisted as Partial<ForecastState>
+        const defaults: Record<string, [number, 'forecast' | 'signed']> = {
+          'opp-nexus': [2400000, 'forecast'],
+          'opp-atlas': [1600000, 'forecast'],
+          'opp-orbit': [1200000, 'signed'],
+          'opp-vertex': [800000, 'forecast'],
+        }
+        if (s?.opportunities) {
+          s.opportunities = s.opportunities.map((o) => ({
+            ...o,
+            dealValue: o.dealValue ?? defaults[o.id]?.[0] ?? 0,
+            booking: o.booking ?? defaults[o.id]?.[1] ?? 'forecast',
+          }))
+        }
+        return s
+      },
       partialize: (s) => ({
         roster: s.roster,
         stages: s.stages,

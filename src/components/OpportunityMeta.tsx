@@ -3,6 +3,7 @@ import { useStore } from '../store/useStore'
 import type { Opportunity } from '../types'
 import { effectiveProbability } from '../lib/funnel'
 import { isoWeekNum, weekLabel } from '../lib/weeks'
+import { fmtMoney } from '../lib/format'
 
 /** Compact detail panel for the selected project: meta, slide, duration,
  *  add-roles, duplicate/delete. Weekly FTE itself is edited in the Gantt. */
@@ -21,6 +22,7 @@ export function OpportunityMeta({ opp, onClose }: { opp: Opportunity; onClose?: 
   const [roleGroup, setRoleGroup] = useState<'energy' | 'delivery'>('delivery')
 
   const prob = effectiveProbability(stages, opp.stageId, opp.probabilityOverride)
+  const dealValue = opp.dealValue ?? 0
   const availablePeople = roster.filter((p) => !opp.assignments.some((a) => a.personId === p.id))
 
   function addPerson() {
@@ -92,6 +94,29 @@ export function OpportunityMeta({ opp, onClose }: { opp: Opportunity; onClose?: 
             <button onClick={() => setDuration(opp.id, opp.durationWeeks + 1)}>+</button>
           </div>
         </div>
+        <label className="field" style={{ flex: '0 1 150px' }}>
+          Deal value $ (TCV)
+          <input
+            type="number" min={0} step={50000}
+            value={opp.dealValue ?? 0}
+            onChange={(e) => update(opp.id, { dealValue: Number(e.target.value) || 0 })}
+          />
+        </label>
+        <div className="field">
+          <span>Booking</span>
+          <div className="seg">
+            <button className={opp.booking !== 'signed' ? 'on' : ''} onClick={() => update(opp.id, { booking: 'forecast' })}>Forecast</button>
+            <button className={opp.booking === 'signed' ? 'on' : ''} onClick={() => update(opp.id, { booking: 'signed' })}>Signed</button>
+          </div>
+        </div>
+      </div>
+
+      <div className="revenue-note">
+        {opp.booking === 'signed' ? (
+          <>Booked revenue <b>{fmtMoney(dealValue)}</b> — signed, counts as actual bookings.</>
+        ) : (
+          <>Pull-through <b>{fmtMoney(dealValue * prob)}</b> = {fmtMoney(dealValue)} deal × {Math.round(prob * 100)}% close</>
+        )}
       </div>
 
       <div className="row wrap" style={{ gap: 20, marginTop: 16 }}>

@@ -42,6 +42,9 @@ export interface Assignment {
   fte: Record<string, number>
 }
 
+/** Forecast pipeline vs a realized, signed booking. */
+export type BookingStatus = 'forecast' | 'signed'
+
 /** A single sales pursuit being forecast. */
 export interface Opportunity {
   id: string
@@ -50,6 +53,10 @@ export interface Opportunity {
   stageId: string
   /** if set (0..1), overrides the stage's default probability */
   probabilityOverride?: number | null
+  /** total contract value in $ (TCV) — the deal size behind pull-through revenue */
+  dealValue?: number
+  /** forecast (weighted pipeline) vs signed (actual booked revenue) */
+  booking?: BookingStatus
   /** Monday-of-week key 'YYYY-MM-DD' for week offset 0 */
   startWeek: string
   durationWeeks: number

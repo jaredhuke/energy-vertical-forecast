@@ -3,6 +3,8 @@
   "name": "Orbit Refinery Predictive Maintenance",
   "client": "Orbit Energy",
   "stageId": "negotiation",
+  "dealValue": 1200000,
+  "booking": "signed",
   "startWeek": "2026-06-29",
   "durationWeeks": 8,
   "notes": "Predictive maintenance pilot for refinery rotating equipment.",

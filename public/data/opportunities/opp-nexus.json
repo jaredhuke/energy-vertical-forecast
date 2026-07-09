@@ -3,6 +3,8 @@
   "name": "Nexus Grid Modernization",
   "client": "Nexus Power",
   "stageId": "proposal",
+  "dealValue": 2400000,
+  "booking": "forecast",
   "startWeek": "2026-07-06",
   "durationWeeks": 12,
   "notes": "Grid modernization advisory + analytics platform scoping.",

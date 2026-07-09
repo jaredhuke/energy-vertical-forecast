@@ -3,6 +3,8 @@
   "name": "Atlas Offshore Wind Analytics",
   "client": "Atlas Renewables",
   "stageId": "qualified",
+  "dealValue": 1600000,
+  "booking": "forecast",
   "startWeek": "2026-07-20",
   "durationWeeks": 10,
   "notes": "Predictive analytics for offshore wind turbine performance.",

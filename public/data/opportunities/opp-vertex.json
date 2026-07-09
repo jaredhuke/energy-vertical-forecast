@@ -3,6 +3,8 @@
   "name": "Vertex Solar Portfolio Optimization",
   "client": "Vertex Grid",
   "stageId": "lead",
+  "dealValue": 800000,
+  "booking": "forecast",
   "startWeek": "2026-08-10",
   "durationWeeks": 6,
   "notes": "Early conversation — portfolio optimization across solar assets.",

@@ -5,6 +5,8 @@ import { exportCsv, exportJson, loadSeed, toBundle } from './lib/persistence'
 import { fsSupported, pickDirectory, readBundle, writeBundle } from './lib/fs'
 import { Dashboard } from './components/Dashboard'
 import { OpportunitiesView } from './components/OpportunitiesView'
+import { UtilizationView } from './components/UtilizationView'
+import { RevenueView } from './components/RevenueView'
 import { RosterView } from './components/RosterView'
 import { StagesView } from './components/StagesView'
 
@@ -91,6 +93,8 @@ export default function App() {
   const tabs: { id: View; label: string; count?: number }[] = [
     { id: 'dashboard', label: 'Dashboard' },
     { id: 'opportunities', label: 'Opportunities', count: opportunities.length },
+    { id: 'utilization', label: 'Utilization' },
+    { id: 'revenue', label: 'Revenue' },
     { id: 'roster', label: 'Roster', count: roster.length },
     { id: 'stages', label: 'Funnel' },
   ]
@@ -147,6 +151,8 @@ export default function App() {
       <main className="main">
         {view === 'dashboard' && <Dashboard />}
         {view === 'opportunities' && <OpportunitiesView />}
+        {view === 'utilization' && <UtilizationView />}
+        {view === 'revenue' && <RevenueView />}
         {view === 'roster' && <RosterView />}
         {view === 'stages' && <StagesView />}
       </main>
