@@ -6,5 +6,7 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
   base: './',
-  server: { port: 3120 },
+  // host: true binds all interfaces (not IPv6-only localhost), so port
+  // health-probes (e.g. ORBIT's stand-up detector) and other machines see it.
+  server: { host: true, port: 3120 },
 })
