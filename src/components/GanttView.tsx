@@ -1,8 +1,7 @@
-import { Fragment, useCallback, useRef, useState } from 'react'
+import { Fragment, useCallback, useMemo, useRef, useState } from 'react'
 import { useStore } from '../store/useStore'
 import type { Opportunity } from '../types'
 import { effectiveProbability, stageName } from '../lib/funnel'
-import { horizon } from '../lib/analytics'
 import { addWeeks, isoWeekNum, weekKeyOf, weekLabel, weekRange, weeksBetween } from '../lib/weeks'
 import { fmtMoney } from '../lib/format'
 
@@ -39,10 +38,15 @@ export function GanttView() {
       return next
     })
 
-  // Shared timeline axis with a little padding on each side.
-  const base = horizon(opportunities, 18)
-  const start = addWeeks(base.weeks[0], -1)
-  const weeks = weekRange(start, base.weeks.length + 4)
+  // Axis start is fixed at 4 weeks before today so sliding a bar never shifts
+  // the whole grid — the axis only ever grows to the right to cover later work.
+  const start = addWeeks(weekKeyOf(), -4)
+  let end = addWeeks(weekKeyOf(), 18)
+  for (const o of opportunities) {
+    const oEnd = addWeeks(o.startWeek, o.durationWeeks)
+    if (weeksBetween(end, oEnd) > 0) end = oEnd
+  }
+  const weeks = weekRange(start, weeksBetween(start, end) + 3)
   const todayCol = weeksBetween(start, weekKeyOf())
 
   // ---- fluid drag: transform-follow the bar element, snap to a week on release
@@ -79,7 +83,16 @@ export function GanttView() {
     setDraggingId(opp.id)
   }
 
-  const sorted = [...opportunities].sort((a, b) => weeksBetween(b.startWeek, a.startWeek))
+  // Stable row order: sort by start week, but only re-sort when the SET of
+  // opportunities changes (add/remove) — never mid-slide. Otherwise dragging a
+  // bar past another project's start date reorders the rows and they jump.
+  const orderIds = useMemo(
+    () => [...opportunities].sort((a, b) => weeksBetween(b.startWeek, a.startWeek)).map((o) => o.id),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [opportunities.map((o) => o.id).join('|')],
+  )
+  const byId = new Map(opportunities.map((o) => [o.id, o]))
+  const sorted = orderIds.map((id) => byId.get(id)).filter((o): o is Opportunity => !!o)
 
   return (
     <div className="card">
