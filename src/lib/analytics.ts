@@ -296,11 +296,12 @@ export interface RosterUtilRow {
   peakUtil: number
 }
 
-const OVER = 1.05
-const UNDER = 0.85
+const OVER_CAP = 1.02 // above capacity → over-allocated (unsustainable)
 
-/** Per-person weekly utilization + certainty across `weeks`, all roster people. */
-export function rosterUtilization(state: ForecastState, weeks: string[]): RosterUtilRow[] {
+/** Per-person weekly utilization + certainty across `weeks`, all roster people.
+ *  Bands are relative to `target` (e.g. 0.8): below target = under-utilized,
+ *  target..capacity = on target, above capacity = over-allocated. */
+export function rosterUtilization(state: ForecastState, weeks: string[], target: number): RosterUtilRow[] {
   const idx = new Map(weeks.map((w, i) => [w, i]))
   const committed = new Map<string, number[]>()
   const weighted = new Map<string, number[]>()
@@ -340,8 +341,8 @@ export function rosterUtilization(state: ForecastState, weeks: string[]): Roster
       person: p,
       weekly,
       avgUtil,
-      overWeeks: weekly.filter((x) => x.util > OVER).length,
-      underWeeks: weekly.filter((x) => x.committed > 0 && x.util < UNDER).length,
+      overWeeks: weekly.filter((x) => x.util > OVER_CAP).length,
+      underWeeks: weekly.filter((x) => x.committed > 0 && x.util < target).length,
       idleWeeks: weekly.filter((x) => x.committed === 0).length,
       peakUtil: weekly.reduce((m, x) => Math.max(m, x.util), 0),
     }
@@ -353,7 +354,7 @@ export function rosterUtilization(state: ForecastState, weeks: string[]): Roster
   })
 }
 
-/** Utilization band for colour affordance. */
-export function utilBand(util: number): 'over' | 'on' | 'under' {
-  return util > OVER ? 'over' : util < UNDER ? 'under' : 'on'
+/** Utilization band vs target: over-capacity (over), below-target (under), else on. */
+export function utilBand(util: number, target: number): 'over' | 'on' | 'under' {
+  return util > OVER_CAP ? 'over' : util < target ? 'under' : 'on'
 }

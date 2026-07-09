@@ -24,6 +24,7 @@ interface UiState {
   view: View
   selectedOpportunityId: string | null
   weightedView: boolean // dashboard: show weighted vs committed
+  utilizationTarget: number // target utilization (0..1), e.g. 0.8 = 80% billable
   dirHandle: unknown | null // File System Access handle (not persisted)
   dirName: string | null
   dirty: boolean // unsaved changes vs connected folder
@@ -33,6 +34,7 @@ interface Actions {
   setView: (v: View) => void
   selectOpportunity: (id: string | null) => void
   setWeightedView: (b: boolean) => void
+  setUtilizationTarget: (t: number) => void
   setEditor: (name: string) => void
 
   // roster
@@ -94,6 +96,7 @@ export const useStore = create<Store>()(
       view: 'dashboard',
       selectedOpportunityId: null,
       weightedView: true,
+      utilizationTarget: 0.8,
       dirHandle: null,
       dirName: null,
       dirty: false,
@@ -102,6 +105,7 @@ export const useStore = create<Store>()(
       setView: (view) => set({ view }),
       selectOpportunity: (selectedOpportunityId) => set({ selectedOpportunityId, view: 'opportunities' }),
       setWeightedView: (weightedView) => set({ weightedView }),
+      setUtilizationTarget: (t) => set({ utilizationTarget: Math.max(0.1, Math.min(1.2, t)) }),
       setEditor: (editor) => set({ editor }),
 
       // ---- roster ----
@@ -298,6 +302,7 @@ export const useStore = create<Store>()(
         opportunities: s.opportunities,
         snapshots: s.snapshots,
         editor: s.editor,
+        utilizationTarget: s.utilizationTarget,
       }),
     },
   ),
