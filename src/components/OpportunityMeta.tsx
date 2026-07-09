@@ -110,7 +110,7 @@ export function OpportunityMeta({ opp, onClose }: { opp: Opportunity; onClose?: 
         {!internal && (
           <>
             <label className="field" style={{ flex: '0 1 150px' }}>
-              Deal value $ (TCV)
+              Deal value — total contract value ($)
               <input
                 type="number" min={0} step={50000}
                 value={opp.dealValue ?? 0}

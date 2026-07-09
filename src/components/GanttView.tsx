@@ -207,10 +207,10 @@ export function GanttView() {
                 const signed = opp.booking === 'signed'
                 const money = opp.dealValue ? fmtMoney(opp.dealValue) : null
                 const barText = internal
-                  ? `Internal · ${weighted.toFixed(1)} FTE·wk`
+                  ? `Internal · ${weighted.toFixed(1)} FTE-weeks`
                   : signed
                     ? money ? `Signed · ${money}` : 'Signed'
-                    : money ? `${money} @ ${Math.round(prob * 100)}%` : `${weighted.toFixed(1)} FTE·wk`
+                    : money ? `${money} @ ${Math.round(prob * 100)}%` : `${weighted.toFixed(1)} FTE-weeks`
                 const energyN = opp.assignments.filter((a) => a.group === 'energy').length
                 const deliveryN = opp.assignments.filter((a) => a.group === 'delivery').length
                 const ordered = [
@@ -242,7 +242,7 @@ export function GanttView() {
                               <span className={`chip xs ${signed ? 'good' : ''}`}>{signed ? 'Signed' : 'Forecast'}</span>
                             </>
                           )}
-                          <span className="faint num">{energyN}E · {deliveryN}D · {opp.durationWeeks}w</span>
+                          <span className="faint num">{energyN} energy · {deliveryN} delivery · {opp.durationWeeks} weeks</span>
                         </div>
                       </td>
                       <td className="track" colSpan={weeks.length}>

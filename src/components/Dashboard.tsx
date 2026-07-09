@@ -93,7 +93,7 @@ export function Dashboard() {
           <div className="delta flat">{over.length ? 'above capacity' : 'all within capacity'}</div>
         </div>
         <div className="kpi">
-          <div className="label">Weighted pipeline · FTE·wk</div>
+          <div className="label">Weighted pipeline · FTE-weeks</div>
           <div className="value num">{t.weighted.toFixed(1)}</div>
           <Delta now={t.weighted} was={last?.weightedFte ?? null} />
         </div>
@@ -118,7 +118,7 @@ export function Dashboard() {
           <div className="delta flat">{rev.signedCount} signed</div>
         </div>
         <div className="kpi">
-          <div className="label">Pipeline TCV</div>
+          <div className="label">Pipeline value</div>
           <div className="value num">{fmtMoney(rev.tcv)}</div>
           <div className="delta flat">{opportunities.length} opportunities</div>
         </div>
@@ -199,7 +199,7 @@ export function Dashboard() {
                     <td>
                       {l.overWeeks.length > 0 ? (
                         <span className="chip warn" title={l.overWeeks.map(weekLabel).join(', ')}>
-                          ! over {l.overWeeks.length} wk{l.overWeeks.length > 1 ? 's' : ''}
+                          ! over {l.overWeeks.length} week{l.overWeeks.length > 1 ? 's' : ''}
                         </span>
                       ) : (
                         <span className="faint" style={{ fontSize: 12 }}>ok</span>
@@ -214,11 +214,11 @@ export function Dashboard() {
 
         {/* Roles impacted */}
         <div className="card">
-          <h2>Energy roles impacted · weighted FTE·wk</h2>
+          <h2>Energy roles impacted · weighted FTE-weeks</h2>
           <HBars items={energyRoles} color="var(--energy)" />
         </div>
         <div className="card">
-          <h2>Delivery roles impacted · weighted FTE·wk</h2>
+          <h2>Delivery roles impacted · weighted FTE-weeks</h2>
           <HBars items={deliveryRoles} color="var(--delivery)" />
         </div>
       </div>
@@ -241,11 +241,11 @@ export function Dashboard() {
               <Sparkline points={snapshots.map((s) => s.opportunityCount)} color="var(--blue)" />
             </div>
             <div>
-              <div className="section-title">Weighted FTE·wk</div>
+              <div className="section-title">Weighted FTE-weeks</div>
               <Sparkline points={snapshots.map((s) => s.weightedFte)} color="var(--purple)" />
             </div>
             <div>
-              <div className="section-title">Committed FTE·wk</div>
+              <div className="section-title">Committed FTE-weeks</div>
               <Sparkline points={snapshots.map((s) => s.committedFte)} color="var(--text-dim)" />
             </div>
           </div>

@@ -33,7 +33,7 @@ function RosterTable({ group }: { group: Group }) {
               <th style={{ width: '24%' }}>Title</th>
               <th style={{ width: '20%' }}>Role</th>
               <th className="num" style={{ width: 90 }}>Capacity</th>
-              <th className="num" style={{ width: 110 }}>Rate $/wk</th>
+              <th className="num" style={{ width: 110 }}>Rate $/week</th>
               <th style={{ width: 34 }}></th>
             </tr>
           </thead>
@@ -65,7 +65,7 @@ export function RosterView() {
   return (
     <div className="grid" style={{ gap: 16 }}>
       <div className="hint">
-        Manage people here — name, level, role, weekly capacity (1.0 = full time), optional $/wk rate. Their weekly
+        Manage people here — name, level, role, weekly capacity (1.0 = full time), optional $/week rate. Their weekly
         forecast utilization is on the <b>Utilization</b> tab. Delivery lines can be named here or left abstract
         (added as role lines directly on an opportunity).
       </div>

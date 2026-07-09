@@ -32,7 +32,7 @@ export function RevenueView() {
       </div>
 
       <div className="kpis">
-        <div className="kpi"><div className="label">Pipeline TCV</div><div className="value num">{fmtMoney(t.tcv)}</div><div className="delta flat">{t.forecastCount + t.signedCount} deals</div></div>
+        <div className="kpi"><div className="label">Pipeline value</div><div className="value num">{fmtMoney(t.tcv)}</div><div className="delta flat">{t.forecastCount + t.signedCount} deals</div></div>
         <div className="kpi"><div className="label">Weighted pull-through</div><div className="value num" style={{ color: 'var(--blue)' }}>{fmtMoney(t.weighted)}</div><div className="delta flat">{t.forecastCount} forecast</div></div>
         <div className="kpi"><div className="label">Signed / booked</div><div className="value num" style={{ color: 'var(--good)' }}>{fmtMoney(t.booked)}</div><div className="delta flat">{t.signedCount} signed</div></div>
         <div className="kpi"><div className="label">Blended value</div><div className="value num">{fmtMoney(t.blended)}</div><div className="delta flat">weighted + booked</div></div>

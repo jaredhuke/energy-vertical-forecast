@@ -24,7 +24,7 @@ function cellStyle(cell: RosterWeekCell, target: number): CSSProperties {
 /** Aggregate several weekly cells into one (for the monthly view). */
 function aggCells(cells: RosterWeekCell[]): RosterWeekCell {
   const committed = cells.reduce((s, c) => s + c.committed, 0)
-  const util = cells.reduce((s, c) => s + c.util, 0) / (cells.length || 1) // avg weekly util
+  const util = cells.reduce((s, c) => s + c.util, 0) / (cells.length || 1) // average weekly utilization
   const weighted = cells.reduce((s, c) => s + c.committed * c.certainty, 0)
   return { util, committed, certainty: committed > 0 ? weighted / committed : 0 }
 }
@@ -61,7 +61,7 @@ export function UtilizationView() {
 
   const cols =
     grain === 'month'
-      ? monthGroups.map((g) => ({ top: g.label, bottom: `${g.idx.length}w`, cell: (r: RosterUtilRow) => aggCells(g.idx.map((i) => r.weekly[i])) }))
+      ? monthGroups.map((g) => ({ top: g.label, bottom: `${g.idx.length} weeks`, cell: (r: RosterUtilRow) => aggCells(g.idx.map((i) => r.weekly[i])) }))
       : weeks.map((w, i) => ({ top: isoWeekNum(w), bottom: weekLabel(w), cell: (r: RosterUtilRow) => r.weekly[i] }))
   const colW = grain === 'month' ? 60 : 40
 
@@ -104,8 +104,8 @@ export function UtilizationView() {
 
         <div className="kpis" style={{ marginBottom: 14 }}>
           <div className="kpi"><div className="label">People</div><div className="value num">{rows.length}</div></div>
-          <div className="kpi"><div className="label">Roster avg utilization</div><div className="value num" style={{ color: rosterAvg < target ? 'var(--blue)' : rosterAvg > 1.02 ? 'var(--warn)' : 'var(--good)' }}>{fmtPct(rosterAvg)}</div><div className="delta flat">target {targetPct}%</div></div>
-          <div className="kpi"><div className="label">Below target</div><div className="value num" style={{ color: belowTarget ? 'var(--blue)' : 'var(--good)' }}>{belowTarget}</div><div className="delta flat">avg under {targetPct}%</div></div>
+          <div className="kpi"><div className="label">Roster average utilization</div><div className="value num" style={{ color: rosterAvg < target ? 'var(--blue)' : rosterAvg > 1.02 ? 'var(--warn)' : 'var(--good)' }}>{fmtPct(rosterAvg)}</div><div className="delta flat">target {targetPct}%</div></div>
+          <div className="kpi"><div className="label">Below target</div><div className="value num" style={{ color: belowTarget ? 'var(--blue)' : 'var(--good)' }}>{belowTarget}</div><div className="delta flat">average under {targetPct}%</div></div>
           <div className="kpi"><div className="label">Over-allocated</div><div className="value num" style={{ color: overPeople ? 'var(--warn)' : 'var(--good)' }}>{overPeople}</div><div className="delta flat">peak &gt; 100%</div></div>
         </div>
 
@@ -122,7 +122,7 @@ export function UtilizationView() {
               </colgroup>
               <thead>
                 <tr>
-                  <th className="ru-lab">Person · avg / over / under</th>
+                  <th className="ru-lab">Person · average / over / under</th>
                   {cols.map((c, i) => (
                     <th key={i} className="ru-wk">
                       <span className="wknum">{c.top}</span>
@@ -139,10 +139,10 @@ export function UtilizationView() {
                       <td className={`ru-lab team-${r.person.group}`}>
                         <div className="ru-name">
                           {r.person.name}
-                          <span className="faint"> {r.person.role} · {r.person.level} · cap {r.person.capacity.toFixed(1)}</span>
+                          <span className="faint"> {r.person.role} · {r.person.level} · capacity {r.person.capacity.toFixed(1)}</span>
                         </div>
                         <div className="ru-stats">
-                          <span>avg <b style={{ color: avgBand === 'over' ? 'var(--warn)' : avgBand === 'under' ? 'var(--blue)' : 'var(--good)' }}>{fmtPct(r.avgUtil)}</b></span>
+                          <span>average <b style={{ color: avgBand === 'over' ? 'var(--warn)' : avgBand === 'under' ? 'var(--blue)' : 'var(--good)' }}>{fmtPct(r.avgUtil)}</b></span>
                           <span className="ru-over">over {r.overWeeks}</span>
                           <span className="ru-under">under {r.underWeeks}</span>
                           <span className="faint">idle {r.idleWeeks}</span>
