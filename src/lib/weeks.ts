@@ -52,6 +52,14 @@ export function weekRange(startKey: string, count: number): string[] {
   return out
 }
 
+/** Week keys from the current week through the last week of the current year. */
+export function weeksToYearEnd(from: Date = new Date()): string[] {
+  const start = weekKeyOf(from)
+  const endMonday = weekKeyOf(new Date(from.getFullYear(), 11, 31))
+  const count = Math.max(1, weeksBetween(start, endMonday) + 1)
+  return weekRange(start, count)
+}
+
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
 /** Short label like 'Jul 6'. */

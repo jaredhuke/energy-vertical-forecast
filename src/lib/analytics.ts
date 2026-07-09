@@ -267,3 +267,93 @@ export function energyUtilization(state: ForecastState, weeks: string[]): Person
   }
   return out.sort((a, b) => b.peakPct - a.peakPct)
 }
+
+// ---------------------------------------------------------------------------
+// Roster utilization heatmap — every person × week (through year-end). Each
+// cell is forecast utilization (committed FTE ÷ capacity); the certainty is
+// the FTE-weighted close % of that week's bookings (signed = 100%), which the
+// UI maps to colour saturation.
+// ---------------------------------------------------------------------------
+
+/** Certainty of an opportunity: signed = 1, else its effective close %. */
+function oppCertainty(state: ForecastState, o: Opportunity): number {
+  return o.booking === 'signed' ? 1 : effectiveProbability(state.stages, o.stageId, o.probabilityOverride)
+}
+
+export interface RosterWeekCell {
+  util: number // committed FTE / capacity (1 = fully booked)
+  committed: number // FTE this week
+  certainty: number // FTE-weighted close % of this week's bookings (0..1)
+}
+
+export interface RosterUtilRow {
+  person: Person
+  weekly: RosterWeekCell[]
+  avgUtil: number // mean utilization across the whole horizon (idle weeks included)
+  overWeeks: number // weeks over capacity
+  underWeeks: number // weeks booked but under capacity (spare on active weeks)
+  idleWeeks: number // weeks with zero booking
+  peakUtil: number
+}
+
+const OVER = 1.05
+const UNDER = 0.85
+
+/** Per-person weekly utilization + certainty across `weeks`, all roster people. */
+export function rosterUtilization(state: ForecastState, weeks: string[]): RosterUtilRow[] {
+  const idx = new Map(weeks.map((w, i) => [w, i]))
+  const committed = new Map<string, number[]>()
+  const weighted = new Map<string, number[]>()
+  const ensure = (m: Map<string, number[]>, id: string) => {
+    let a = m.get(id)
+    if (!a) {
+      a = new Array(weeks.length).fill(0)
+      m.set(id, a)
+    }
+    return a
+  }
+  for (const o of state.opportunities) {
+    const cert = oppCertainty(state, o)
+    for (const asg of o.assignments) {
+      if (!asg.personId) continue
+      for (let off = 0; off < o.durationWeeks; off++) {
+        const fte = asg.fte[String(off)] || 0
+        if (!fte) continue
+        const i = idx.get(addWeeks(o.startWeek, off))
+        if (i == null) continue
+        ensure(committed, asg.personId)[i] += fte
+        ensure(weighted, asg.personId)[i] += fte * cert
+      }
+    }
+  }
+  const rows: RosterUtilRow[] = state.roster.map((p) => {
+    const cap = p.capacity || 1
+    const c = committed.get(p.id) ?? new Array(weeks.length).fill(0)
+    const w = weighted.get(p.id) ?? new Array(weeks.length).fill(0)
+    const weekly: RosterWeekCell[] = weeks.map((_, i) => ({
+      util: c[i] / cap,
+      committed: c[i],
+      certainty: c[i] > 0 ? w[i] / c[i] : 0,
+    }))
+    const avgUtil = weekly.reduce((s, x) => s + x.util, 0) / (weeks.length || 1)
+    return {
+      person: p,
+      weekly,
+      avgUtil,
+      overWeeks: weekly.filter((x) => x.util > OVER).length,
+      underWeeks: weekly.filter((x) => x.committed > 0 && x.util < UNDER).length,
+      idleWeeks: weekly.filter((x) => x.committed === 0).length,
+      peakUtil: weekly.reduce((m, x) => Math.max(m, x.util), 0),
+    }
+  })
+  // Energy team first, then by average utilization (busiest at the top).
+  return rows.sort((a, b) => {
+    if (a.person.group !== b.person.group) return a.person.group === 'energy' ? -1 : 1
+    return b.avgUtil - a.avgUtil
+  })
+}
+
+/** Utilization band for colour affordance. */
+export function utilBand(util: number): 'over' | 'on' | 'under' {
+  return util > OVER ? 'over' : util < UNDER ? 'under' : 'on'
+}

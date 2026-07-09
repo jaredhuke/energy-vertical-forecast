@@ -305,3 +305,24 @@ a { color: var(--blue); }
 .sc-rev > div { flex: 1; min-width: 0; }
 .sc-rev .faint { font-size: 10px; text-transform: uppercase; letter-spacing: 0.4px; }
 .sc-rev-v { font-size: 15px; font-weight: 600; margin-top: 1px; }
+
+/* ---- roster utilization heatmap ---- */
+.ru-legend { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; color: var(--text-dim); }
+.ru-legend .sw { width: 11px; height: 11px; border-radius: 3px; display: inline-block; }
+.util-grid { overflow: auto; border: 1px solid var(--border); border-radius: var(--r); max-height: 72vh; background: #fff; }
+.util-grid table { border-collapse: separate; border-spacing: 0; font-size: 11px; table-layout: fixed; }
+.util-grid th, .util-grid td { border-bottom: 1px solid var(--border); border-right: 1px solid var(--border); }
+.util-grid thead th { position: sticky; top: 0; z-index: 2; background: var(--surface-2); color: var(--text-faint); font-weight: 500; padding: 3px 0; text-align: center; white-space: nowrap; }
+.util-grid th.ru-wk .wknum { display: block; font-size: 11px; font-weight: 650; color: var(--text); letter-spacing: 0.2px; }
+.util-grid th.ru-wk .wkdate { display: block; font-size: 8.5px; color: var(--text-faint); margin-top: -1px; }
+.util-grid .ru-lab { position: sticky; left: 0; z-index: 1; background: #fff; width: 268px; text-align: left; padding: 4px 10px 4px 12px; border-right: 2px solid var(--border-strong); }
+.util-grid thead .ru-lab { z-index: 3; background: var(--surface-2); vertical-align: bottom; color: var(--text-faint); }
+.util-grid .ru-lab.team-energy { box-shadow: inset 4px 0 0 var(--energy); }
+.util-grid .ru-lab.team-delivery { box-shadow: inset 4px 0 0 var(--delivery); }
+.util-grid .ru-name { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.util-grid .ru-name .faint { font-weight: 400; font-size: 11px; }
+.util-grid .ru-stats { display: flex; gap: 10px; font-size: 11px; margin-top: 2px; font-variant-numeric: tabular-nums; }
+.util-grid .ru-stats .ru-over { color: var(--bad); }
+.util-grid .ru-stats .ru-under { color: var(--blue); }
+.util-grid td.ru-cell { text-align: center; height: 28px; padding: 0; font-variant-numeric: tabular-nums; color: var(--text); }
+.util-grid td.ru-cell .ru-over-num { font-weight: 700; }
