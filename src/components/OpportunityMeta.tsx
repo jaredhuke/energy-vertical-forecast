@@ -6,7 +6,7 @@ import { isoWeekNum, weekLabel } from '../lib/weeks'
 
 /** Compact detail panel for the selected project: meta, slide, duration,
  *  add-roles, duplicate/delete. Weekly FTE itself is edited in the Gantt. */
-export function OpportunityMeta({ opp }: { opp: Opportunity }) {
+export function OpportunityMeta({ opp, onClose }: { opp: Opportunity; onClose?: () => void }) {
   const stages = useStore((s) => s.stages)
   const roster = useStore((s) => s.roster)
   const update = useStore((s) => s.updateOpportunity)
@@ -42,6 +42,7 @@ export function OpportunityMeta({ opp }: { opp: Opportunity }) {
         <div className="row" style={{ gap: 8 }}>
           <button className="btn ghost sm" onClick={() => duplicateOpportunity(opp.id)}>Duplicate</button>
           <button className="btn ghost sm danger" onClick={() => { if (confirm(`Delete "${opp.name}"?`)) removeOpportunity(opp.id) }}>Delete</button>
+          {onClose && <button className="icon-btn" title="Close" aria-label="Close" onClick={onClose}>×</button>}
         </div>
       </div>
 
@@ -112,7 +113,7 @@ export function OpportunityMeta({ opp }: { opp: Opportunity }) {
           <button className="btn sm" disabled={!roleText.trim()} onClick={addRoleLine}>Add role</button>
         </div>
       </div>
-      <div className="hint" style={{ marginTop: 10 }}>Edit weekly FTE per role directly in the timeline above. Drag a project bar to slide it.</div>
+      <div className="hint" style={{ marginTop: 10 }}>Edit weekly FTE per role in the timeline. Drag a project bar to slide it.</div>
     </div>
   )
 }
