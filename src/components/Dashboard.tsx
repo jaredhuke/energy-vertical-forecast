@@ -4,15 +4,18 @@ import type { ForecastState } from '../types'
 import {
   committedTotal,
   demandByWeek,
+  energyUtilization,
   funnelCounts,
   horizon,
   personLoads,
+  revenueTotals,
   rolesImpacted,
   totals,
   weightedTotal,
 } from '../lib/analytics'
 import { stageName } from '../lib/funnel'
 import { weekLabel } from '../lib/weeks'
+import { fmtMoney, fmtPct } from '../lib/format'
 import { HBars, Sparkline, WeeklyDemandChart } from './charts'
 
 function Delta({ now, was, unit = '' }: { now: number; was: number | null; unit?: string }) {
@@ -66,39 +69,63 @@ export function Dashboard() {
   const over = loads.filter((l) => l.overWeeks.length > 0)
   const last = snapshots.length ? snapshots[snapshots.length - 1] : null
 
+  // Utilization = the headline metric; revenue next.
+  const utils = useMemo(() => energyUtilization(state, weeks), [state, weeks])
+  const avgPeak = utils.length ? utils.reduce((a, u) => a + u.peakPct, 0) / utils.length : 0
+  const rev = useMemo(() => revenueTotals(state), [state])
+
   const energyRoles = roles.filter((r) => r.group === 'energy').map((r) => ({ label: r.role, value: r.weighted }))
   const deliveryRoles = roles.filter((r) => r.group === 'delivery').map((r) => ({ label: r.role, value: r.weighted }))
 
   return (
     <div className="grid" style={{ gap: 16 }}>
-      {/* KPI row */}
+      {/* Utilization — headline metrics */}
+      <div className="section-title" style={{ margin: 0 }}>Energy team utilization</div>
       <div className="kpis">
         <div className="kpi">
-          <div className="label">Opportunities</div>
-          <div className="value num">{opportunities.length}</div>
-          <Delta now={opportunities.length} was={last?.opportunityCount ?? null} />
+          <div className="label">Avg peak utilization</div>
+          <div className="value num" style={{ color: avgPeak > 1 ? 'var(--warn)' : 'var(--blue)' }}>{fmtPct(avgPeak)}</div>
+          <div className="delta flat">{utils.length} energy people</div>
+        </div>
+        <div className="kpi">
+          <div className="label">Over-allocated</div>
+          <div className="value num" style={{ color: over.length ? 'var(--warn)' : 'var(--good)' }}>{over.length}</div>
+          <div className="delta flat">{over.length ? 'above capacity' : 'all within capacity'}</div>
         </div>
         <div className="kpi">
           <div className="label">Weighted pipeline · FTE·wk</div>
-          <div className="value num" style={{ color: 'var(--blue)' }}>{t.weighted.toFixed(1)}</div>
+          <div className="value num">{t.weighted.toFixed(1)}</div>
           <Delta now={t.weighted} was={last?.weightedFte ?? null} />
-        </div>
-        <div className="kpi">
-          <div className="label">Committed · FTE·wk</div>
-          <div className="value num">{t.committed.toFixed(1)}</div>
-          <Delta now={t.committed} was={last?.committedFte ?? null} />
         </div>
         <div className="kpi">
           <div className="label">Peak weighted week</div>
           <div className="value num">{peak.w.toFixed(1)}</div>
           <div className="delta flat">{weekLabel(peak.wWeek)} · {peak.c.toFixed(1)} committed</div>
         </div>
+      </div>
+
+      {/* Revenue — next */}
+      <div className="section-title" style={{ margin: '4px 0 0' }}>Revenue pulled through</div>
+      <div className="kpis">
         <div className="kpi">
-          <div className="label">Over-allocated</div>
-          <div className="value num" style={{ color: over.length ? 'var(--warn)' : 'var(--good)' }}>
-            {over.length}
-          </div>
-          <div className="delta flat">{over.length ? 'people above capacity' : 'all within capacity'}</div>
+          <div className="label">Weighted pull-through</div>
+          <div className="value num" style={{ color: 'var(--blue)' }}>{fmtMoney(rev.weighted)}</div>
+          <div className="delta flat">{rev.forecastCount} forecast deals</div>
+        </div>
+        <div className="kpi">
+          <div className="label">Signed / booked</div>
+          <div className="value num" style={{ color: 'var(--good)' }}>{fmtMoney(rev.booked)}</div>
+          <div className="delta flat">{rev.signedCount} signed</div>
+        </div>
+        <div className="kpi">
+          <div className="label">Pipeline TCV</div>
+          <div className="value num">{fmtMoney(rev.tcv)}</div>
+          <div className="delta flat">{opportunities.length} opportunities</div>
+        </div>
+        <div className="kpi">
+          <div className="label">Blended value</div>
+          <div className="value num">{fmtMoney(rev.blended)}</div>
+          <div className="delta flat">weighted + booked</div>
         </div>
       </div>
 

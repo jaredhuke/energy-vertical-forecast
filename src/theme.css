@@ -56,14 +56,16 @@ body {
 /* ---- app shell ---- */
 .app { display: flex; flex-direction: column; height: 100%; }
 .header {
-  display: flex; align-items: center; gap: 18px;
-  padding: 12px 20px;
-  background: rgba(252, 251, 248, 0.72);
+  display: flex; flex-direction: column; gap: 10px;
+  padding: 10px 20px;
+  background: rgba(252, 251, 248, 0.78);
   backdrop-filter: saturate(1.2) blur(12px);
   -webkit-backdrop-filter: saturate(1.2) blur(12px);
   border-bottom: 1px solid var(--border);
-  flex-wrap: wrap;
 }
+.header-row { display: flex; align-items: center; gap: 16px; }
+.controls { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+.controls label.row { flex: 0 0 auto; }
 .brand { display: flex; align-items: baseline; gap: 10px; }
 .brand h1 { font-size: 15px; font-weight: 650; margin: 0; letter-spacing: 0.2px; }
 .brand .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--grad); display: inline-block; }
@@ -72,7 +74,8 @@ body {
 .tabs { display: flex; gap: 4px; }
 .tab {
   background: transparent; border: 1px solid transparent; color: var(--text-dim);
-  padding: 7px 14px; border-radius: var(--r-sm); cursor: pointer; font-size: 13px; font-family: inherit;
+  height: 30px; padding: 0 14px; border-radius: var(--r-sm); cursor: pointer; font-size: 13px; font-family: inherit;
+  display: inline-flex; align-items: center;
 }
 .tab:hover { color: var(--text); background: var(--surface-2); }
 .tab.active { color: var(--text); background: #ffffff; border-color: var(--border-strong); box-shadow: var(--shadow); }
@@ -85,7 +88,7 @@ body {
 button { font-family: inherit; }
 .btn {
   background: #ffffff; color: var(--text); border: 1px solid var(--border-strong);
-  padding: 7px 13px; border-radius: var(--r-sm); cursor: pointer; font-size: 13px;
+  height: 30px; padding: 0 13px; border-radius: var(--r-sm); cursor: pointer; font-size: 13px;
   display: inline-flex; align-items: center; gap: 7px; white-space: nowrap;
 }
 .btn:hover { background: var(--surface-2); border-color: #b9b8c6; }
@@ -93,7 +96,7 @@ button { font-family: inherit; }
 .btn.primary:hover { filter: brightness(1.05); }
 .btn.ghost { background: transparent; border-color: var(--border-strong); color: var(--text-dim); }
 .btn.ghost:hover { color: var(--text); border-color: #b9b8c6; background: var(--surface-2); }
-.btn.sm { padding: 4px 9px; font-size: 12px; }
+.btn.sm { height: 30px; padding: 0 10px; font-size: 12px; }
 .btn.danger:hover { border-color: var(--bad); color: var(--bad); }
 .btn:disabled { opacity: 0.45; cursor: not-allowed; }
 
@@ -107,8 +110,9 @@ button { font-family: inherit; }
 /* ---- inputs ---- */
 input, select, textarea {
   background: #ffffff; color: var(--text); border: 1px solid var(--border-strong);
-  border-radius: var(--r-sm); padding: 6px 9px; font-family: inherit; font-size: 13px;
+  border-radius: var(--r-sm); padding: 4px 9px; font-family: inherit; font-size: 13px;
 }
+.header input, .header select { height: 30px; }
 input:focus, select:focus, textarea:focus {
   outline: none; border-color: var(--blue); box-shadow: 0 0 0 2px rgba(63, 95, 224, 0.18);
 }
@@ -218,7 +222,8 @@ a { color: var(--blue); }
 .gantt th.wk.today { box-shadow: inset 2px 0 0 var(--blue); }
 .gantt th.wk.today .wknum { color: var(--blue); }
 
-.gantt .lab { position: sticky; left: 0; z-index: 1; background: #ffffff; width: 240px; text-align: left; padding: 3px 8px; }
+.gantt .lab { position: sticky; left: 0; z-index: 1; background: #ffffff; width: 240px; text-align: left; padding: 3px 8px; border-right: 1px solid var(--border-strong); }
+.gantt .lab::after { content: ''; position: absolute; top: 0; bottom: 0; right: -7px; width: 7px; background: linear-gradient(90deg, rgba(30, 32, 50, 0.09), rgba(30, 32, 50, 0)); pointer-events: none; }
 .gantt thead .lab { z-index: 3; color: var(--text-faint); background: var(--surface-2); vertical-align: bottom; padding-bottom: 6px; }
 .gantt .lab.role { padding-left: 12px; background: #f7f6f1; }
 .gantt tr.sel .lab { box-shadow: inset 2px 0 0 var(--blue); }

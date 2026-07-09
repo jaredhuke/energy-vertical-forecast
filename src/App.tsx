@@ -106,11 +106,12 @@ export default function App() {
     if (label !== null) takeSnapshot(label)
   }
 
+  // Utilization is the headline metric, Revenue next; then the working views.
   const tabs: { id: View; label: string; count?: number }[] = [
     { id: 'dashboard', label: 'Dashboard' },
-    { id: 'opportunities', label: 'Opportunities', count: opportunities.length },
     { id: 'utilization', label: 'Utilization' },
     { id: 'revenue', label: 'Revenue' },
+    { id: 'opportunities', label: 'Opportunities', count: opportunities.length },
     { id: 'roster', label: 'Roster', count: roster.length },
     { id: 'stages', label: 'Funnel' },
   ]
@@ -118,28 +119,16 @@ export default function App() {
   return (
     <div className="app">
       <header className="header">
-        <div className="brand">
-          <span className="dot" />
-          <h1>Energy Vertical</h1>
-          <span className="sub">Presales Forecast</span>
-        </div>
+        <div className="header-row">
+          <div className="brand">
+            <span className="dot" />
+            <h1>Energy Vertical</h1>
+            <span className="sub">Presales Forecast</span>
+          </div>
 
-        <nav className="tabs">
-          {tabs.map((t) => (
-            <button
-              key={t.id}
-              className={`tab ${view === t.id ? 'active' : ''}`}
-              onClick={() => setView(t.id)}
-            >
-              {t.label}
-              {t.count != null && <span className="count">{t.count}</span>}
-            </button>
-          ))}
-        </nav>
+          <div className="spacer" />
 
-        <div className="spacer" />
-
-        <div className="row wrap" style={{ gap: 8 }}>
+          <div className="controls">
           <label className="row" style={{ gap: 6, fontSize: 12 }} title="Stamped on edits you make">
             <span className="faint">Editor</span>
             <input value={editor} onChange={(e) => setEditor(e.target.value)} style={{ width: 90 }} />
@@ -166,7 +155,21 @@ export default function App() {
           <button className="btn ghost sm" onClick={() => exportJson(useStore.getState())}>JSON</button>
           <button className="btn primary sm" onClick={snapshot}>Snapshot</button>
           <input ref={fileInput} type="file" accept="application/json" hidden onChange={onImportFile} />
+          </div>
         </div>
+
+        <nav className="tabs">
+          {tabs.map((t) => (
+            <button
+              key={t.id}
+              className={`tab ${view === t.id ? 'active' : ''}`}
+              onClick={() => setView(t.id)}
+            >
+              {t.label}
+              {t.count != null && <span className="count">{t.count}</span>}
+            </button>
+          ))}
+        </nav>
       </header>
 
       <main className="main">
