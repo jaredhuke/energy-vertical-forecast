@@ -207,3 +207,31 @@ table.sheet td.num, table.sheet th.num { text-align: right; font-variant-numeric
 .section-title { font-size: 12px; text-transform: uppercase; letter-spacing: 0.6px; color: var(--text-faint); margin: 4px 0 10px; }
 a { color: var(--blue); }
 .hint { font-size: 12px; color: var(--text-faint); }
+.linklike { background: none; border: none; color: var(--text); font: inherit; font-weight: 600; cursor: pointer; padding: 0; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.linklike:hover { color: var(--blue); }
+
+/* ---- Gantt / timeline ---- */
+.gantt { overflow: auto; border: 1px solid var(--border); border-radius: var(--r); max-height: 72vh; }
+.gantt table { border-collapse: separate; border-spacing: 0; font-size: 12px; }
+.gantt th, .gantt td { border-bottom: 1px solid var(--border); }
+.gantt thead th { position: sticky; top: 0; z-index: 2; background: var(--surface-2); color: var(--text-faint); font-weight: 500; padding: 6px 0; text-align: center; white-space: nowrap; }
+.gantt th.wk { min-width: 46px; width: 46px; }
+.gantt th.wk .wknum { display: block; font-size: 10px; color: var(--text-faint); }
+.gantt .lab { position: sticky; left: 0; z-index: 1; background: var(--surface); min-width: 240px; width: 240px; max-width: 240px; text-align: left; padding: 6px 10px; }
+.gantt thead .lab { z-index: 3; color: var(--text-faint); }
+.gantt .lab.role { padding-left: 18px; background: var(--bg-2); }
+.gantt tr.sel .lab { box-shadow: inset 2px 0 0 var(--blue); }
+.gantt td.cell { min-width: 46px; width: 46px; height: 30px; padding: 0; text-align: center; border-right: 1px solid var(--border); }
+.gantt td.cell.out { background: var(--bg); }
+.gantt td.cell input { width: 100%; height: 30px; border: none; background: transparent; text-align: center; color: var(--text); font-variant-numeric: tabular-nums; padding: 0; -moz-appearance: textfield; }
+.gantt td.cell input::-webkit-outer-spin-button, .gantt td.cell input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.gantt td.cell input:focus { outline: none; box-shadow: inset 0 0 0 2px var(--blue); }
+.gantt td.cell.energy { background: #5b8cff20; }
+.gantt td.cell.delivery { background: #b07bff20; }
+.gantt td.barcell { min-width: 46px; width: 46px; height: 30px; padding: 0; position: relative; border-right: 1px solid var(--border); }
+.gantt td.barcell.on { background: var(--grad); border-right: 1px solid transparent; cursor: grab; }
+.gantt tr.barrow.grabbing td.barcell.on { cursor: grabbing; }
+.gantt tr.barrow td { border-bottom: 2px solid var(--border-strong); }
+.gantt .barlabel { position: absolute; left: 8px; top: 50%; transform: translateY(-50%); white-space: nowrap; color: #fff; font-size: 11px; font-weight: 600; pointer-events: none; z-index: 2; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45); font-variant-numeric: tabular-nums; }
+.gantt th.wk.today { box-shadow: inset 2px 0 0 var(--blue); }
+.gantt td.today { box-shadow: inset 2px 0 0 rgba(91, 140, 255, 0.5); }
