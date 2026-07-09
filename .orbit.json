@@ -1,0 +1,24 @@
+{
+  "projectId": "P-ENERGY-FORECAST",
+  "name": "Energy Vertical Forecast",
+  "domain": "Energy vertical / presales capacity + revenue",
+  "phase": "build",
+  "status": "Shipped: resource-loaded Gantt (fluid slide/resize, Energy vs Delivery teams), energy-team utilization, and pull-through revenue (deal value x close %) with signed bookings. Git-repo data store in public/data; collaborative via git.epam.com.",
+  "goals": [
+    "Forecast weekly FTE across presales opportunities on a resource-loaded Gantt",
+    "Weight demand by funnel stage (close %) and split Energy team vs Delivery team",
+    "Surface energy-team utilization and pull-through revenue (deal value x close %) + signed bookings",
+    "Collaborate async via a git repo store (public/data), one JSON file per opportunity"
+  ],
+  "tokenBurn": {
+    "estCloudTokens": 3000000,
+    "estUSD": 36,
+    "basis": "estimate — full app build across the 2026-07-09 Claude Code session (claude-opus-4-8); not metered",
+    "asOf": "2026-07-09",
+    "measured": false
+  },
+  "supportingFiles": [
+    { "label": "README", "path": "/Users/jared_huke/Documents/Code/energy-vertical-forecast/README.md", "kind": "spec", "audience": "human" }
+  ],
+  "updatedAt": "2026-07-09"
+}
