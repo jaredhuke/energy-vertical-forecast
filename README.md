@@ -26,28 +26,37 @@ npm run dev        # http://localhost:3120
 Working data lives in your browser (localStorage) as you edit — nothing is lost
 on refresh.
 
-## Data, backups & snapshots via git.epam.com
+## Data storage & collaboration (git.epam.com)
 
-Data is small and versioned by git, which doubles as your **snapshot history and
-backup**. Recommended flow for a few occasional editors:
+**Working copy:** your browser's localStorage (survives refresh).
+**Shared source of truth:** this repo's `public/data/` — versioned by git, which
+doubles as **snapshot history + backup**.
 
-1. Clone the repo (this folder) from git.epam.com.
-2. Run the app, click **Connect repo** (Chromium browsers), point it at this folder.
-3. Edit. Click **Save → repo** to write the JSON files:
-   ```
-   data/roster.json
-   data/stages.json
-   data/manifest.json
-   data/opportunities/<id>.json   ← one file per opportunity
-   ```
-4. `git commit && git push`. **Each commit is a snapshot and a backup.**
+```
+public/data/roster.json
+public/data/stages.json
+public/data/manifest.json
+public/data/opportunities/<id>.json   ← one file per opportunity
+```
+
+Collaborative loop for a team of editors (Chromium browsers):
+
+1. Clone the repo from git.epam.com and `git pull` for the latest.
+2. Run the app → **Connect repo** → select this repo's **root** folder.
+3. **Load ↓** to pull the repo's data into the app.
+4. Edit. **Save ↑** writes your changes back into `public/data/`.
+5. `git commit && git push` to share. **Each commit is a snapshot and a backup.**
 
 Because each opportunity is its own file, two people editing *different*
-opportunities never hit a merge conflict. For a weekly trend, click **Snapshot**
-(records a summary row) and commit — the dashboard sparklines read those.
+opportunities never hit a merge conflict. `git pull` + **Load ↓** brings in a
+teammate's changes. For a weekly trend, click **Snapshot** and commit — the
+dashboard sparklines read those.
 
-> No Chromium? Use **Import** / **JSON** buttons to load and download the bundle
-> manually, and commit the downloaded file.
+> No Chromium? Use **Import** / **JSON** to load and download the bundle manually,
+> and commit the downloaded file.
+>
+> Want everyone in sync in real time (no git steps)? That needs a small backend —
+> a separate build. The git flow above is the zero-infra default.
 
 ## Model notes
 

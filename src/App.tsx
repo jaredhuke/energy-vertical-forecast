@@ -71,6 +71,22 @@ export default function App() {
     }
   }
 
+  // Pull teammates' changes: re-read the repo's data files into the app.
+  async function load() {
+    if (!dirHandle) return
+    if (dirty && !confirm('You have unsaved changes. Load the latest from the repo anyway? Your unsaved edits will be replaced.')) return
+    try {
+      setBusy('load')
+      const b = await readBundle(dirHandle)
+      replaceAll(b)
+      markSaved()
+    } catch (e) {
+      alert('Load failed: ' + (e as Error).message + '\nMake sure you selected the repo root (it has a public/data folder).')
+    } finally {
+      setBusy('')
+    }
+  }
+
   function onImportFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
@@ -131,9 +147,14 @@ export default function App() {
 
           {fsSupported() &&
             (dirHandle ? (
-              <button className="btn" onClick={save} disabled={busy === 'save'} title={`Write JSON files into ${dirName}/data`}>
-                {dirty && <span className="dirty-dot" />} {busy === 'save' ? 'Saving…' : `Save → ${dirName}`}
-              </button>
+              <>
+                <button className="btn ghost" onClick={load} disabled={busy === 'load'} title="Re-read data from the repo (pull teammates' changes after a git pull)">
+                  {busy === 'load' ? 'Loading…' : 'Load ↓'}
+                </button>
+                <button className="btn" onClick={save} disabled={busy === 'save'} title={`Write JSON files into ${dirName}/public/data, then commit & push`}>
+                  {dirty && <span className="dirty-dot" />} {busy === 'save' ? 'Saving…' : `Save ↑ ${dirName}`}
+                </button>
+              </>
             ) : (
               <button className="btn ghost" onClick={connect} title="Point at your cloned git.epam.com repo folder">
                 Connect repo
