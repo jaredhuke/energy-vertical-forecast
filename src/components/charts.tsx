@@ -1,6 +1,6 @@
 import { weekLabel, isoWeekNum } from '../lib/weeks'
 import type { WeekDemand } from '../lib/analytics'
-import { committedTotal, weightedTotal } from '../lib/analytics'
+import { signedTotal, weightedTotal } from '../lib/analytics'
 
 // ---- Weekly demand: stacked energy+delivery bars for the chosen metric,
 //      with the other metric drawn as a faint reference line. ----
@@ -9,7 +9,7 @@ export function WeeklyDemandChart({
   mode,
 }: {
   demand: WeekDemand[]
-  mode: 'committed' | 'weighted'
+  mode: 'signed' | 'weighted'
 }) {
   const H = 200
   const padT = 12
@@ -19,9 +19,10 @@ export function WeeklyDemandChart({
   const W = padL + demand.length * bandW + 8
   const plotH = H - padT - padB
 
+  // Weighted forecast is always ≥ signed, so it sets the axis ceiling.
   const maxVal = Math.max(
     1,
-    ...demand.map((d) => Math.max(committedTotal(d), weightedTotal(d))),
+    ...demand.map((d) => Math.max(weightedTotal(d), signedTotal(d))),
   )
   const niceMax = Math.ceil(maxVal)
   const y = (v: number) => padT + plotH - (v / niceMax) * plotH
@@ -30,7 +31,7 @@ export function WeeklyDemandChart({
   const gridlines = Array.from({ length: niceMax + 1 }, (_, i) => i)
 
   const otherLine = demand.map((d, i) => {
-    const v = mode === 'committed' ? weightedTotal(d) : committedTotal(d)
+    const v = mode === 'signed' ? weightedTotal(d) : signedTotal(d)
     return `${padL + i * bandW + bandW / 2},${y(v)}`
   })
 
@@ -46,8 +47,8 @@ export function WeeklyDemandChart({
           </g>
         ))}
         {demand.map((d, i) => {
-          const e = mode === 'committed' ? d.committedEnergy : d.weightedEnergy
-          const dv = mode === 'committed' ? d.committedDelivery : d.weightedDelivery
+          const e = mode === 'signed' ? d.signedEnergy : d.weightedEnergy
+          const dv = mode === 'signed' ? d.signedDelivery : d.weightedDelivery
           const x = padL + i * bandW + (bandW - barW) / 2
           const eH = (e / niceMax) * plotH
           const dH = (dv / niceMax) * plotH

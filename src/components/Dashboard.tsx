@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 import { useStore } from '../store/useStore'
 import type { ForecastState } from '../types'
 import {
-  committedTotal,
+  signedTotal,
   demandByWeek,
   energyUtilization,
   funnelCounts,
@@ -54,16 +54,15 @@ export function Dashboard() {
 
   const peak = demand.reduce(
     (acc, d) => {
-      const c = committedTotal(d)
       const w = weightedTotal(d)
-      if (c > acc.c) acc.c = c
       if (w > acc.w) {
         acc.w = w
         acc.wWeek = d.week
+        acc.wSigned = signedTotal(d)
       }
       return acc
     },
-    { c: 0, w: 0, wWeek: weeks[0] },
+    { w: 0, wWeek: weeks[0], wSigned: 0 },
   )
 
   const over = loads.filter((l) => l.overWeeks.length > 0)
@@ -100,7 +99,7 @@ export function Dashboard() {
         <div className="kpi">
           <div className="label">Peak weighted week</div>
           <div className="value num">{peak.w.toFixed(1)}</div>
-          <div className="delta flat">{weekLabel(peak.wWeek)} · {peak.c.toFixed(1)} signed</div>
+          <div className="delta flat">{weekLabel(peak.wWeek)} · {peak.wSigned.toFixed(1)} signed</div>
         </div>
       </div>
 
@@ -148,7 +147,7 @@ export function Dashboard() {
         {opportunities.length === 0 ? (
           <div className="empty">No opportunities yet. Add one under the Opportunities tab.</div>
         ) : (
-          <WeeklyDemandChart demand={demand} mode={weightedView ? 'weighted' : 'committed'} />
+          <WeeklyDemandChart demand={demand} mode={weightedView ? 'weighted' : 'signed'} />
         )}
       </div>
 

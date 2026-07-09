@@ -2,7 +2,7 @@
   "id": "opp-orbit",
   "name": "Orbit Refinery Predictive Maintenance",
   "client": "Orbit Energy",
-  "stageId": "negotiation",
+  "stageId": "closed",
   "dealValue": 1200000,
   "booking": "signed",
   "startWeek": "2026-06-29",

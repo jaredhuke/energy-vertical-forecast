@@ -106,12 +106,13 @@ export default function App() {
     if (label !== null) takeSnapshot(label)
   }
 
-  // Utilization is the headline metric, Revenue next; then the working views.
+  // Dashboard overview first, then Opportunities (where you build the plan),
+  // then the Utilization and Revenue read-outs, then Roster and Funnel.
   const tabs: { id: View; label: string; count?: number }[] = [
     { id: 'dashboard', label: 'Dashboard' },
+    { id: 'opportunities', label: 'Opportunities', count: opportunities.length },
     { id: 'utilization', label: 'Utilization' },
     { id: 'revenue', label: 'Revenue' },
-    { id: 'opportunities', label: 'Opportunities', count: opportunities.length },
     { id: 'roster', label: 'Roster', count: roster.length },
     { id: 'stages', label: 'Funnel' },
   ]

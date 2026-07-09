@@ -2,9 +2,18 @@ import type { ForecastState, Opportunity, Person } from '../types'
 import { effectiveProbability } from './funnel'
 import { addWeeks, weekKeyOf, weeksBetween, weekRange } from './weeks'
 
-/** FTE-weighting probability. Internal projects are committed work → 100%. */
+/** FTE-weighting probability. Signed deals and internal projects are certain
+ *  work → 100%; forecast deals weight by their funnel close percentage. */
 export function oppProbability(state: ForecastState, o: Opportunity): number {
-  return o.type === 'internal' ? 1 : effectiveProbability(state.stages, o.stageId, o.probabilityOverride)
+  return o.type === 'internal' || o.booking === 'signed'
+    ? 1
+    : effectiveProbability(state.stages, o.stageId, o.probabilityOverride)
+}
+
+/** True when the opportunity is contractually committed work (a signed deal or
+ *  an internal project) rather than an unclosed forecast. */
+export function oppIsBooked(o: Opportunity): boolean {
+  return o.type === 'internal' || o.booking === 'signed'
 }
 
 /** Absolute end week key (exclusive-style: start + duration). */
@@ -32,10 +41,15 @@ export function horizon(
 
 export interface WeekDemand {
   week: string
+  // full staffing if every opportunity lands (all at 100%)
   committedEnergy: number
   committedDelivery: number
+  // probability-weighted forecast (signed & internal at 100%, forecast at close %)
   weightedEnergy: number
   weightedDelivery: number
+  // only contractually booked work (signed deals + internal projects)
+  signedEnergy: number
+  signedDelivery: number
 }
 
 export function demandByWeek(state: ForecastState, weeks: string[]): WeekDemand[] {
@@ -46,9 +60,12 @@ export function demandByWeek(state: ForecastState, weeks: string[]): WeekDemand[
     committedDelivery: 0,
     weightedEnergy: 0,
     weightedDelivery: 0,
+    signedEnergy: 0,
+    signedDelivery: 0,
   }))
   for (const o of state.opportunities) {
     const prob = oppProbability(state, o)
+    const booked = oppIsBooked(o)
     for (const a of o.assignments) {
       for (let off = 0; off < o.durationWeeks; off++) {
         const fte = a.fte[String(off)] || 0
@@ -60,9 +77,11 @@ export function demandByWeek(state: ForecastState, weeks: string[]): WeekDemand[
         if (a.group === 'energy') {
           row.committedEnergy += fte
           row.weightedEnergy += fte * prob
+          if (booked) row.signedEnergy += fte
         } else {
           row.committedDelivery += fte
           row.weightedDelivery += fte * prob
+          if (booked) row.signedDelivery += fte
         }
       }
     }
@@ -72,6 +91,7 @@ export function demandByWeek(state: ForecastState, weeks: string[]): WeekDemand[
 
 export const committedTotal = (d: WeekDemand) => d.committedEnergy + d.committedDelivery
 export const weightedTotal = (d: WeekDemand) => d.weightedEnergy + d.weightedDelivery
+export const signedTotal = (d: WeekDemand) => d.signedEnergy + d.signedDelivery
 
 export interface PersonLoad {
   person: Person
