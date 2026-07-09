@@ -1,78 +1,23 @@
-import { useMemo } from 'react'
+import { useMemo, type CSSProperties } from 'react'
 import { useStore } from '../store/useStore'
 import type { ForecastState } from '../types'
-import { energyUtilization, horizon } from '../lib/analytics'
-import type { PersonUtilization } from '../lib/analytics'
-import { fmtMoney, fmtPct } from '../lib/format'
+import { rosterUtilization, utilBand } from '../lib/analytics'
+import type { RosterWeekCell } from '../lib/analytics'
+import { isoWeekNum, weekLabel, weeksToYearEnd } from '../lib/weeks'
+import { fmtPct } from '../lib/format'
 
-/** Small responsive weekly-load sparkbars with a capacity reference line. */
-function UtilBars({ weekly, cap }: { weekly: number[]; cap: number }) {
-  const H = 44
-  const step = 6
-  const n = Math.max(weekly.length, 1)
-  const max = Math.max(cap * 1.15, ...weekly, 0.001)
-  const y = (v: number) => H - (v / max) * H
-  const capY = y(cap)
-  return (
-    <svg width="100%" height={H} viewBox={`0 0 ${n * step} ${H}`} preserveAspectRatio="none" style={{ display: 'block' }}>
-      {weekly.map((v, i) => {
-        const over = v > cap + 1e-9
-        const h = (v / max) * H
-        return (
-          <rect
-            key={i}
-            x={i * step + 0.6}
-            y={H - h}
-            width={step - 1.2}
-            height={h}
-            fill={over ? 'var(--warn)' : 'var(--energy)'}
-            opacity={v ? 0.9 : 0}
-          />
-        )
-      })}
-      <line x1={0} x2={n * step} y1={capY} y2={capY} stroke="var(--text-faint)" strokeWidth={1} strokeDasharray="2 2" vectorEffect="non-scaling-stroke" />
-    </svg>
-  )
+const BAND_RGB: Record<'over' | 'on' | 'under', string> = {
+  over: '229, 90, 90', // red — over capacity
+  on: '46, 176, 120', // green — at capacity
+  under: '91, 140, 255', // blue — spare capacity
 }
 
-function ScoreCard({ u }: { u: PersonUtilization }) {
-  const over = u.overWeeks > 0
-  return (
-    <div className="card scorecard">
-      <div className="sc-head">
-        <div style={{ minWidth: 0 }}>
-          <div className="sc-name">{u.person.name}</div>
-          <div className="faint sc-role">{u.person.role} · {u.person.level}</div>
-        </div>
-        <div className="sc-peak">
-          <div className="sc-peak-val num" style={{ color: over ? 'var(--warn)' : u.peakPct >= 0.8 ? 'var(--blue)' : 'var(--text)' }}>
-            {fmtPct(u.peakPct)}
-          </div>
-          <div className="faint">peak util</div>
-        </div>
-      </div>
-
-      <UtilBars weekly={u.weekly} cap={u.cap} />
-
-      <div className="sc-stats">
-        <div><span className="faint">Avg</span> <span className="num">{fmtPct(u.avgPct)}</span></div>
-        <div><span className="faint">Cap</span> <span className="num">{u.cap.toFixed(1)}</span></div>
-        <div>
-          {over ? (
-            <span className="chip warn">! over {u.overWeeks}w</span>
-          ) : (
-            <span className="faint">within capacity</span>
-          )}
-        </div>
-      </div>
-
-      <div className="sc-rev">
-        <div><div className="faint">Influenced</div><div className="num sc-rev-v" style={{ color: 'var(--blue)' }}>{fmtMoney(u.weighted)}</div></div>
-        <div><div className="faint">Booked</div><div className="num sc-rev-v" style={{ color: 'var(--good)' }}>{fmtMoney(u.booked)}</div></div>
-        <div><div className="faint">Deals</div><div className="num sc-rev-v">{u.deals}</div></div>
-      </div>
-    </div>
-  )
+/** Cell background: hue = over/under, opacity = forecast certainty (close %). */
+function cellStyle(cell: RosterWeekCell): CSSProperties {
+  if (cell.committed === 0) return {}
+  const rgb = BAND_RGB[utilBand(cell.util)]
+  const alpha = 0.12 + 0.62 * cell.certainty
+  return { background: `rgba(${rgb}, ${alpha.toFixed(3)})` }
 }
 
 export function UtilizationView() {
@@ -80,43 +25,101 @@ export function UtilizationView() {
   const stages = useStore((s) => s.stages)
   const opportunities = useStore((s) => s.opportunities)
   const snapshots = useStore((s) => s.snapshots)
+  const setView = useStore((s) => s.setView)
 
   const state = useMemo<ForecastState>(
     () => ({ roster, stages, opportunities, snapshots, editor: '' }),
     [roster, stages, opportunities, snapshots],
   )
-  const { weeks } = useMemo(() => horizon(opportunities), [opportunities])
-  const utils = useMemo(() => energyUtilization(state, weeks), [state, weeks])
+  const weeks = useMemo(() => weeksToYearEnd(), [])
+  const rows = useMemo(() => rosterUtilization(state, weeks), [state, weeks])
 
-  const overCount = utils.filter((u) => u.overWeeks > 0).length
-  const avgPeak = utils.length ? utils.reduce((a, u) => a + u.peakPct, 0) / utils.length : 0
-  const totalWeighted = utils.reduce((a, u) => a + u.weighted, 0)
-  const totalBooked = utils.reduce((a, u) => a + u.booked, 0)
+  const overPeople = rows.filter((r) => r.peakUtil > 1.05).length
+  const rosterAvg = rows.length ? rows.reduce((s, r) => s + r.avgUtil, 0) / rows.length : 0
 
   return (
     <div className="grid" style={{ gap: 16 }}>
       <div className="hint">
-        Forecast utilization for every energy-vertical person — weekly load vs capacity, plus the pipeline value each one
-        is influencing. Bars above the dashed capacity line are over-allocated.
+        Utilization is the <b>people × projects</b> view — the transpose of the Opportunities timeline (edit FTE there;
+        this reads from the same data). Every person's weekly forecast utilization through year-end: cell colour affords
+        over- vs under-booking; colour strength shows how certain the booking is (funnel close %, signed = 100%).
       </div>
 
-      <div className="kpis">
-        <div className="kpi"><div className="label">Energy people</div><div className="value num">{utils.length}</div></div>
-        <div className="kpi"><div className="label">Avg peak utilization</div><div className="value num">{fmtPct(avgPeak)}</div></div>
-        <div className="kpi"><div className="label">Over-allocated</div><div className="value num" style={{ color: overCount ? 'var(--warn)' : 'var(--good)' }}>{overCount}</div></div>
-        <div className="kpi"><div className="label">Influenced pipeline</div><div className="value num" style={{ color: 'var(--blue)' }}>{fmtMoney(totalWeighted)}</div></div>
-        <div className="kpi"><div className="label">Influenced booked</div><div className="value num" style={{ color: 'var(--good)' }}>{fmtMoney(totalBooked)}</div></div>
-      </div>
-
-      {utils.length === 0 ? (
-        <div className="empty">No energy-vertical people yet — add some in the Roster.</div>
-      ) : (
-        <div className="scorecards">
-          {utils.map((u) => (
-            <ScoreCard key={u.person.id} u={u} />
-          ))}
+      <div className="card">
+        <div className="h-row">
+          <h2>Utilization heatmap — through year end</h2>
+          <div className="row" style={{ gap: 14 }}>
+            <span className="ru-legend"><span className="sw" style={{ background: `rgba(${BAND_RGB.under},0.6)` }} /> Under</span>
+            <span className="ru-legend"><span className="sw" style={{ background: `rgba(${BAND_RGB.on},0.6)` }} /> On target</span>
+            <span className="ru-legend"><span className="sw" style={{ background: `rgba(${BAND_RGB.over},0.6)` }} /> Over</span>
+            <span className="faint" style={{ fontSize: 11 }}>opacity = close-% certainty</span>
+          </div>
         </div>
-      )}
+
+        <div className="kpis" style={{ marginBottom: 14 }}>
+          <div className="kpi"><div className="label">People</div><div className="value num">{rows.length}</div></div>
+          <div className="kpi"><div className="label">Roster avg utilization</div><div className="value num" style={{ color: 'var(--blue)' }}>{fmtPct(rosterAvg)}</div></div>
+          <div className="kpi"><div className="label">Over-allocated (peak &gt;100%)</div><div className="value num" style={{ color: overPeople ? 'var(--warn)' : 'var(--good)' }}>{overPeople}</div></div>
+          <div className="kpi"><div className="label">Weeks shown</div><div className="value num">{weeks.length}</div></div>
+        </div>
+
+        {rows.length === 0 ? (
+          <div className="empty">No people in the roster yet — add some under the Roster tab.</div>
+        ) : (
+          <div className="util-grid">
+            <table style={{ width: 268 + weeks.length * 40 }}>
+              <colgroup>
+                <col style={{ width: 268 }} />
+                {weeks.map((w) => (
+                  <col key={w} style={{ width: 40 }} />
+                ))}
+              </colgroup>
+              <thead>
+                <tr>
+                  <th className="ru-lab">Person · avg / over / under</th>
+                  {weeks.map((w) => (
+                    <th key={w} className="ru-wk">
+                      <span className="wknum">{isoWeekNum(w)}</span>
+                      <span className="wkdate">{weekLabel(w)}</span>
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((r) => {
+                  const avgBand = utilBand(r.avgUtil)
+                  return (
+                    <tr key={r.person.id}>
+                      <td className={`ru-lab team-${r.person.group}`}>
+                        <div className="ru-name">
+                          {r.person.name}
+                          <span className="faint"> {r.person.role} · {r.person.level} · cap {r.person.capacity.toFixed(1)}</span>
+                        </div>
+                        <div className="ru-stats">
+                          <span>avg <b style={{ color: avgBand === 'over' ? 'var(--warn)' : avgBand === 'under' ? 'var(--blue)' : 'var(--good)' }}>{fmtPct(r.avgUtil)}</b></span>
+                          <span className="ru-over">over {r.overWeeks}</span>
+                          <span className="ru-under">under {r.underWeeks}</span>
+                          <span className="faint">idle {r.idleWeeks}</span>
+                        </div>
+                      </td>
+                      {r.weekly.map((cell, i) => (
+                        <td key={i} className="ru-cell" style={cellStyle(cell)} title={cell.committed ? `${weekLabel(weeks[i])}: ${Math.round(cell.util * 100)}% · ${cell.committed.toFixed(2)} FTE · ${Math.round(cell.certainty * 100)}% certain` : `${weekLabel(weeks[i])}: idle`}>
+                          {cell.committed > 0 ? (
+                            <span className={cell.util > 1.05 ? 'ru-over-num' : ''}>{Math.round(cell.util * 100)}</span>
+                          ) : null}
+                        </td>
+                      ))}
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+        <div className="hint" style={{ marginTop: 10 }}>
+          Edit allocations in the <button className="linklike" style={{ color: 'var(--blue)', fontWeight: 500 }} onClick={() => setView('opportunities')}>Opportunities timeline</button> — this view updates live.
+        </div>
+      </div>
     </div>
   )
 }
