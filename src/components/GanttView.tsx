@@ -166,6 +166,7 @@ export function GanttView() {
           >
             {editMode ? 'Done editing' : 'Edit roles'}
           </button>
+          <button className="btn ghost sm" onClick={() => addOpportunity('internal')}>+ Internal project</button>
           <button className="btn primary sm" onClick={() => addOpportunity()}>+ New opportunity</button>
         </div>
       </div>
@@ -197,16 +198,19 @@ export function GanttView() {
             </thead>
             <tbody>
               {sorted.map((opp) => {
-                const prob = effectiveProbability(stages, opp.stageId, opp.probabilityOverride)
+                const internal = opp.type === 'internal'
+                const prob = internal ? 1 : effectiveProbability(stages, opp.stageId, opp.probabilityOverride)
                 const startCol = weeksBetween(start, opp.startWeek)
                 const weighted = weightedFteWeeks(opp, prob)
                 const isSel = opp.id === selectedId
                 const isOpen = !collapsed.has(opp.id)
                 const signed = opp.booking === 'signed'
                 const money = opp.dealValue ? fmtMoney(opp.dealValue) : null
-                const barText = signed
-                  ? money ? `Signed · ${money}` : 'Signed'
-                  : money ? `${money} @ ${Math.round(prob * 100)}%` : `${weighted.toFixed(1)} FTE·wk`
+                const barText = internal
+                  ? `Internal · ${weighted.toFixed(1)} FTE·wk`
+                  : signed
+                    ? money ? `Signed · ${money}` : 'Signed'
+                    : money ? `${money} @ ${Math.round(prob * 100)}%` : `${weighted.toFixed(1)} FTE·wk`
                 const energyN = opp.assignments.filter((a) => a.group === 'energy').length
                 const deliveryN = opp.assignments.filter((a) => a.group === 'delivery').length
                 const ordered = [
@@ -230,8 +234,14 @@ export function GanttView() {
                           </span>
                         </div>
                         <div className="lab-sub">
-                          <span className="chip xs">{stageName(stages, opp.stageId)} · {Math.round(prob * 100)}%</span>
-                          <span className={`chip xs ${signed ? 'good' : ''}`}>{signed ? 'Signed' : 'Forecast'}</span>
+                          {internal ? (
+                            <span className="chip xs internal">Internal</span>
+                          ) : (
+                            <>
+                              <span className="chip xs">{stageName(stages, opp.stageId)} · {Math.round(prob * 100)}%</span>
+                              <span className={`chip xs ${signed ? 'good' : ''}`}>{signed ? 'Signed' : 'Forecast'}</span>
+                            </>
+                          )}
                           <span className="faint num">{energyN}E · {deliveryN}D · {opp.durationWeeks}w</span>
                         </div>
                       </td>
@@ -239,7 +249,7 @@ export function GanttView() {
                         <div className="track-inner">
                           {todayCol >= 0 && todayCol < weeks.length && <div className="today-line" style={{ left: todayCol * COL }} />}
                           <div
-                            className={`gbar ${signed ? 'signed' : ''}`}
+                            className={`gbar ${internal ? 'internal' : signed ? 'signed' : ''}`}
                             style={{ left: startCol * COL + 2, width: Math.max(0, opp.durationWeeks * COL - 4) }}
                             onPointerDown={(e) => onBarDown(e, opp)}
                             onDoubleClick={() => select(opp.id)}

@@ -1,9 +1,9 @@
-import { useMemo, type CSSProperties } from 'react'
+import { useMemo, useState, type CSSProperties } from 'react'
 import { useStore } from '../store/useStore'
 import type { ForecastState } from '../types'
 import { rosterUtilization, utilBand } from '../lib/analytics'
-import type { RosterWeekCell } from '../lib/analytics'
-import { isoWeekNum, weekLabel, weeksToYearEnd } from '../lib/weeks'
+import type { RosterUtilRow, RosterWeekCell } from '../lib/analytics'
+import { isoWeekNum, parseKey, weekLabel, weeksToYearEnd } from '../lib/weeks'
 import { fmtPct } from '../lib/format'
 
 const BAND_RGB: Record<'over' | 'on' | 'under', string> = {
@@ -11,6 +11,7 @@ const BAND_RGB: Record<'over' | 'on' | 'under', string> = {
   on: '46, 176, 120', // green — at/above target, within capacity
   under: '91, 140, 255', // blue — below target
 }
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
 /** Cell background: hue = band vs target, opacity = forecast certainty (close %). */
 function cellStyle(cell: RosterWeekCell, target: number): CSSProperties {
@@ -18,6 +19,14 @@ function cellStyle(cell: RosterWeekCell, target: number): CSSProperties {
   const rgb = BAND_RGB[utilBand(cell.util, target)]
   const alpha = 0.12 + 0.62 * cell.certainty
   return { background: `rgba(${rgb}, ${alpha.toFixed(3)})` }
+}
+
+/** Aggregate several weekly cells into one (for the monthly view). */
+function aggCells(cells: RosterWeekCell[]): RosterWeekCell {
+  const committed = cells.reduce((s, c) => s + c.committed, 0)
+  const util = cells.reduce((s, c) => s + c.util, 0) / (cells.length || 1) // avg weekly util
+  const weighted = cells.reduce((s, c) => s + c.committed * c.certainty, 0)
+  return { util, committed, certainty: committed > 0 ? weighted / committed : 0 }
 }
 
 export function UtilizationView() {
@@ -29,12 +38,32 @@ export function UtilizationView() {
   const target = useStore((s) => s.utilizationTarget)
   const setTarget = useStore((s) => s.setUtilizationTarget)
 
+  const [grain, setGrain] = useState<'week' | 'month'>('week')
+
   const state = useMemo<ForecastState>(
     () => ({ roster, stages, opportunities, snapshots, editor: '' }),
     [roster, stages, opportunities, snapshots],
   )
   const weeks = useMemo(() => weeksToYearEnd(), [])
   const rows = useMemo(() => rosterUtilization(state, weeks, target), [state, weeks, target])
+
+  // Month buckets: consecutive weeks grouped by their Monday's month.
+  const monthGroups = useMemo(() => {
+    const groups: { label: string; idx: number[] }[] = []
+    weeks.forEach((w, i) => {
+      const label = MONTHS[parseKey(w).getMonth()]
+      const last = groups[groups.length - 1]
+      if (last && last.label === label) last.idx.push(i)
+      else groups.push({ label, idx: [i] })
+    })
+    return groups
+  }, [weeks])
+
+  const cols =
+    grain === 'month'
+      ? monthGroups.map((g) => ({ top: g.label, bottom: `${g.idx.length}w`, cell: (r: RosterUtilRow) => aggCells(g.idx.map((i) => r.weekly[i])) }))
+      : weeks.map((w, i) => ({ top: isoWeekNum(w), bottom: weekLabel(w), cell: (r: RosterUtilRow) => r.weekly[i] }))
+  const colW = grain === 'month' ? 60 : 40
 
   const overPeople = rows.filter((r) => r.peakUtil > 1.02).length
   const belowTarget = rows.filter((r) => r.avgUtil < target).length
@@ -45,15 +74,19 @@ export function UtilizationView() {
     <div className="grid" style={{ gap: 16 }}>
       <div className="hint">
         Utilization is the <b>people × projects</b> view — the transpose of the Opportunities timeline (edit FTE there;
-        this reads from the same data). Bands are set against your <b>utilization target</b>: below target = under-utilized
-        (blue), target→capacity = on target (green), over capacity = over-allocated (red). Colour strength = booking
-        certainty (funnel close %, signed = 100%).
+        this reads from the same data, internal projects included). Bands are set against your <b>utilization target</b>:
+        below target = under-utilized (blue), target→capacity = on target (green), over capacity = over-allocated (red).
+        Colour strength = booking certainty (funnel close %; signed & internal = 100%).
       </div>
 
       <div className="card">
         <div className="h-row">
           <h2>Utilization heatmap — through year end</h2>
           <div className="row wrap" style={{ gap: 14 }}>
+            <div className="seg" role="tablist">
+              <button className={grain === 'week' ? 'on' : ''} onClick={() => setGrain('week')}>Weekly</button>
+              <button className={grain === 'month' ? 'on' : ''} onClick={() => setGrain('month')}>Monthly</button>
+            </div>
             <div className="row" style={{ gap: 8 }}>
               <span className="faint" style={{ fontSize: 12 }}>Target</span>
               <div className="stepper">
@@ -80,20 +113,20 @@ export function UtilizationView() {
           <div className="empty">No people in the roster yet — add some under the Roster tab.</div>
         ) : (
           <div className="util-grid">
-            <table style={{ width: 268 + weeks.length * 40 }}>
+            <table style={{ width: 268 + cols.length * colW }}>
               <colgroup>
                 <col style={{ width: 268 }} />
-                {weeks.map((w) => (
-                  <col key={w} style={{ width: 40 }} />
+                {cols.map((_, i) => (
+                  <col key={i} style={{ width: colW }} />
                 ))}
               </colgroup>
               <thead>
                 <tr>
                   <th className="ru-lab">Person · avg / over / under</th>
-                  {weeks.map((w) => (
-                    <th key={w} className="ru-wk">
-                      <span className="wknum">{isoWeekNum(w)}</span>
-                      <span className="wkdate">{weekLabel(w)}</span>
+                  {cols.map((c, i) => (
+                    <th key={i} className="ru-wk">
+                      <span className="wknum">{c.top}</span>
+                      <span className="wkdate">{c.bottom}</span>
                     </th>
                   ))}
                 </tr>
@@ -115,13 +148,14 @@ export function UtilizationView() {
                           <span className="faint">idle {r.idleWeeks}</span>
                         </div>
                       </td>
-                      {r.weekly.map((cell, i) => (
-                        <td key={i} className="ru-cell" style={cellStyle(cell, target)} title={cell.committed ? `${weekLabel(weeks[i])}: ${Math.round(cell.util * 100)}% (target ${targetPct}%) · ${cell.committed.toFixed(2)} FTE · ${Math.round(cell.certainty * 100)}% certain` : `${weekLabel(weeks[i])}: idle`}>
-                          {cell.committed > 0 ? (
-                            <span className={cell.util > 1.02 ? 'ru-over-num' : ''}>{Math.round(cell.util * 100)}</span>
-                          ) : null}
-                        </td>
-                      ))}
+                      {cols.map((c, i) => {
+                        const cell = c.cell(r)
+                        return (
+                          <td key={i} className="ru-cell" style={cellStyle(cell, target)} title={cell.committed ? `${c.top}: ${Math.round(cell.util * 100)}% (target ${targetPct}%) · ${cell.committed.toFixed(2)} FTE · ${Math.round(cell.certainty * 100)}% certain` : `${c.top}: idle`}>
+                            {cell.committed > 0 ? <span className={cell.util > 1.02 ? 'ru-over-num' : ''}>{Math.round(cell.util * 100)}</span> : null}
+                          </td>
+                        )
+                      })}
                     </tr>
                   )
                 })}

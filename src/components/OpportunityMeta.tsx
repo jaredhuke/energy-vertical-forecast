@@ -22,6 +22,7 @@ export function OpportunityMeta({ opp, onClose }: { opp: Opportunity; onClose?: 
   const [roleText, setRoleText] = useState('')
   const [roleGroup, setRoleGroup] = useState<'energy' | 'delivery'>('delivery')
 
+  const internal = opp.type === 'internal'
   const prob = effectiveProbability(stages, opp.stageId, opp.probabilityOverride)
   const dealValue = opp.dealValue ?? 0
   const availablePeople = roster.filter((p) => !opp.assignments.some((a) => a.personId === p.id))
@@ -58,25 +59,36 @@ export function OpportunityMeta({ opp, onClose }: { opp: Opportunity; onClose?: 
           Client
           <input value={opp.client} onChange={(e) => update(opp.id, { client: e.target.value })} />
         </label>
-        <label className="field" style={{ flex: '0 1 160px' }}>
-          Stage
-          <select value={opp.stageId} onChange={(e) => update(opp.id, { stageId: e.target.value })}>
-            {stages.map((s) => (
-              <option key={s.id} value={s.id}>{s.name} · {Math.round(s.probability * 100)}%</option>
-            ))}
-          </select>
-        </label>
-        <label className="field" style={{ flex: '0 1 120px' }}>
-          Close % {opp.probabilityOverride == null && <span className="faint">(auto)</span>}
-          <input
-            type="number" min={0} max={100} step={5}
-            value={Math.round(prob * 100)}
-            onChange={(e) => {
-              const v = e.target.value
-              update(opp.id, { probabilityOverride: v === '' ? null : Math.max(0, Math.min(100, Number(v))) / 100 })
-            }}
-          />
-        </label>
+        <div className="field">
+          <span>Type</span>
+          <div className="seg">
+            <button className={!internal ? 'on' : ''} onClick={() => update(opp.id, { type: 'external' })}>External</button>
+            <button className={internal ? 'on' : ''} onClick={() => update(opp.id, { type: 'internal' })}>Internal</button>
+          </div>
+        </div>
+        {!internal && (
+          <>
+            <label className="field" style={{ flex: '0 1 160px' }}>
+              Stage
+              <select value={opp.stageId} onChange={(e) => update(opp.id, { stageId: e.target.value })}>
+                {stages.map((s) => (
+                  <option key={s.id} value={s.id}>{s.name} · {Math.round(s.probability * 100)}%</option>
+                ))}
+              </select>
+            </label>
+            <label className="field" style={{ flex: '0 1 120px' }}>
+              Close % {opp.probabilityOverride == null && <span className="faint">(auto)</span>}
+              <input
+                type="number" min={0} max={100} step={5}
+                value={Math.round(prob * 100)}
+                onChange={(e) => {
+                  const v = e.target.value
+                  update(opp.id, { probabilityOverride: v === '' ? null : Math.max(0, Math.min(100, Number(v))) / 100 })
+                }}
+              />
+            </label>
+          </>
+        )}
         <div className="field">
           <span>Start</span>
           <div className="stepper">
@@ -95,25 +107,31 @@ export function OpportunityMeta({ opp, onClose }: { opp: Opportunity; onClose?: 
             <button onClick={() => setDuration(opp.id, opp.durationWeeks + 1)}>+</button>
           </div>
         </div>
-        <label className="field" style={{ flex: '0 1 150px' }}>
-          Deal value $ (TCV)
-          <input
-            type="number" min={0} step={50000}
-            value={opp.dealValue ?? 0}
-            onChange={(e) => update(opp.id, { dealValue: Number(e.target.value) || 0 })}
-          />
-        </label>
-        <div className="field">
-          <span>Booking</span>
-          <div className="seg">
-            <button className={opp.booking !== 'signed' ? 'on' : ''} onClick={() => update(opp.id, { booking: 'forecast' })}>Forecast</button>
-            <button className={opp.booking === 'signed' ? 'on' : ''} onClick={() => update(opp.id, { booking: 'signed' })}>Signed</button>
-          </div>
-        </div>
+        {!internal && (
+          <>
+            <label className="field" style={{ flex: '0 1 150px' }}>
+              Deal value $ (TCV)
+              <input
+                type="number" min={0} step={50000}
+                value={opp.dealValue ?? 0}
+                onChange={(e) => update(opp.id, { dealValue: Number(e.target.value) || 0 })}
+              />
+            </label>
+            <div className="field">
+              <span>Booking</span>
+              <div className="seg">
+                <button className={opp.booking !== 'signed' ? 'on' : ''} onClick={() => update(opp.id, { booking: 'forecast' })}>Forecast</button>
+                <button className={opp.booking === 'signed' ? 'on' : ''} onClick={() => update(opp.id, { booking: 'signed' })}>Signed</button>
+              </div>
+            </div>
+          </>
+        )}
       </div>
 
       <div className="revenue-note">
-        {opp.booking === 'signed' ? (
+        {internal ? (
+          <>Internal project — consumes capacity (counts in <b>utilization at 100% certainty</b>); no funnel stage, deal value, or revenue.</>
+        ) : opp.booking === 'signed' ? (
           <>Booked revenue <b>{fmtMoney(dealValue)}</b> — signed, counts as actual bookings.</>
         ) : (
           <>Pull-through <b>{fmtMoney(dealValue * prob)}</b> = {fmtMoney(dealValue)} deal × {Math.round(prob * 100)}% close</>

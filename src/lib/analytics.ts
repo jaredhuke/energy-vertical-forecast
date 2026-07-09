@@ -2,6 +2,11 @@ import type { ForecastState, Opportunity, Person } from '../types'
 import { effectiveProbability } from './funnel'
 import { addWeeks, weekKeyOf, weeksBetween, weekRange } from './weeks'
 
+/** FTE-weighting probability. Internal projects are committed work → 100%. */
+export function oppProbability(state: ForecastState, o: Opportunity): number {
+  return o.type === 'internal' ? 1 : effectiveProbability(state.stages, o.stageId, o.probabilityOverride)
+}
+
 /** Absolute end week key (exclusive-style: start + duration). */
 export function opportunityEndWeek(o: Opportunity): string {
   return addWeeks(o.startWeek, Math.max(1, o.durationWeeks))
@@ -43,7 +48,7 @@ export function demandByWeek(state: ForecastState, weeks: string[]): WeekDemand[
     weightedDelivery: 0,
   }))
   for (const o of state.opportunities) {
-    const prob = effectiveProbability(state.stages, o.stageId, o.probabilityOverride)
+    const prob = oppProbability(state, o)
     for (const a of o.assignments) {
       for (let off = 0; off < o.durationWeeks; off++) {
         const fte = a.fte[String(off)] || 0
@@ -88,7 +93,7 @@ export function personLoads(state: ForecastState, weeks: string[]): PersonLoad[]
     return l
   }
   for (const o of state.opportunities) {
-    const prob = effectiveProbability(state.stages, o.stageId, o.probabilityOverride)
+    const prob = oppProbability(state, o)
     for (const a of o.assignments) {
       if (!a.personId) continue
       const person = state.roster.find((p) => p.id === a.personId)
@@ -121,7 +126,7 @@ export function rolesImpacted(
 ): { role: string; group: string; committed: number; weighted: number }[] {
   const map = new Map<string, { role: string; group: string; committed: number; weighted: number }>()
   for (const o of state.opportunities) {
-    const prob = effectiveProbability(state.stages, o.stageId, o.probabilityOverride)
+    const prob = oppProbability(state, o)
     for (const a of o.assignments) {
       const key = `${a.group}:${a.role}`
       const rec = map.get(key) || { role: a.role, group: a.group, committed: 0, weighted: 0 }
@@ -139,7 +144,7 @@ export function rolesImpacted(
 export function funnelCounts(state: ForecastState): { stageId: string; count: number }[] {
   return state.stages.map((s) => ({
     stageId: s.id,
-    count: state.opportunities.filter((o) => o.stageId === s.id).length,
+    count: state.opportunities.filter((o) => o.type !== 'internal' && o.stageId === s.id).length,
   }))
 }
 
@@ -161,13 +166,13 @@ export function totals(demand: WeekDemand[]) {
 // ---------------------------------------------------------------------------
 
 export function oppWeightedRevenue(state: ForecastState, o: Opportunity): number {
-  if (o.booking === 'signed') return 0
+  if (o.type === 'internal' || o.booking === 'signed') return 0
   const prob = effectiveProbability(state.stages, o.stageId, o.probabilityOverride)
   return (o.dealValue || 0) * prob
 }
 
 export function oppBookedRevenue(o: Opportunity): number {
-  return o.booking === 'signed' ? o.dealValue || 0 : 0
+  return o.type !== 'internal' && o.booking === 'signed' ? o.dealValue || 0 : 0
 }
 
 export function revenueTotals(state: ForecastState) {
@@ -177,6 +182,7 @@ export function revenueTotals(state: ForecastState) {
   let signedCount = 0
   let forecastCount = 0
   for (const o of state.opportunities) {
+    if (o.type === 'internal') continue // internal projects are not sales revenue
     tcv += o.dealValue || 0
     if (o.booking === 'signed') {
       booked += o.dealValue || 0
@@ -201,6 +207,7 @@ export interface RoleRevenue {
 export function revenueByEnergyRole(state: ForecastState): RoleRevenue[] {
   const map = new Map<string, { deals: Set<string>; people: Set<string>; weighted: number; booked: number }>()
   for (const o of state.opportunities) {
+    if (o.type === 'internal') continue
     const energy = o.assignments.filter((a) => a.group === 'energy')
     const rolesInDeal = new Set(energy.map((a) => a.role))
     for (const role of rolesInDeal) {
@@ -277,7 +284,7 @@ export function energyUtilization(state: ForecastState, weeks: string[]): Person
 
 /** Certainty of an opportunity: signed = 1, else its effective close %. */
 function oppCertainty(state: ForecastState, o: Opportunity): number {
-  return o.booking === 'signed' ? 1 : effectiveProbability(state.stages, o.stageId, o.probabilityOverride)
+  return o.type === 'internal' || o.booking === 'signed' ? 1 : effectiveProbability(state.stages, o.stageId, o.probabilityOverride)
 }
 
 export interface RosterWeekCell {

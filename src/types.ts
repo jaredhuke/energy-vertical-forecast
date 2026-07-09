@@ -45,11 +45,18 @@ export interface Assignment {
 /** Forecast pipeline vs a realized, signed booking. */
 export type BookingStatus = 'forecast' | 'signed'
 
-/** A single sales pursuit being forecast. */
+/** External sales pursuit vs internal (non-billable) project. Internal work
+ *  consumes capacity (counts in utilization at 100% certainty) but has no
+ *  funnel stage, deal value, or revenue. */
+export type ProjectType = 'external' | 'internal'
+
+/** A single sales pursuit or internal project being forecast. */
 export interface Opportunity {
   id: string
   name: string
   client: string
+  /** external sales pursuit (default) vs internal project */
+  type?: ProjectType
   stageId: string
   /** if set (0..1), overrides the stage's default probability */
   probabilityOverride?: number | null

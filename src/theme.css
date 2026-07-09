@@ -269,6 +269,8 @@ a { color: var(--blue); }
 .gantt .gbar:hover { box-shadow: 0 2px 8px rgba(60, 50, 140, 0.4); }
 .gantt .gbar.dragging { cursor: grabbing; box-shadow: 0 6px 18px rgba(60, 50, 140, 0.42); z-index: 5; }
 .gantt .gbar.signed { background: linear-gradient(135deg, #0e8a56 0%, #16a06c 100%); box-shadow: 0 1px 3px rgba(14, 122, 78, 0.32); }
+.gantt .gbar.internal { background: linear-gradient(135deg, #7d8290 0%, #9aa0af 100%); box-shadow: 0 1px 3px rgba(70, 74, 90, 0.26); }
+.chip.xs.internal, .chip.internal { border-color: #b3b7c2; color: #565b6b; background: rgba(120, 126, 140, 0.1); }
 .gantt .gbar-label { padding: 0 10px; color: #fff; font-size: 11px; font-weight: 600; white-space: nowrap; pointer-events: none; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.28); font-variant-numeric: tabular-nums; flex: 1; overflow: hidden; text-overflow: ellipsis; }
 /* right-edge resize grip */
 .gantt .gbar-resize { position: absolute; right: 0; top: 0; bottom: 0; width: 10px; cursor: ew-resize; z-index: 3; }

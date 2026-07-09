@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import type { Assignment, ForecastState, Group, Opportunity, Person, Snapshot } from '../types'
+import type { Assignment, ForecastState, Group, Opportunity, Person, ProjectType, Snapshot } from '../types'
 import { DEFAULT_STAGES, effectiveProbability } from '../lib/funnel'
 import { demandByWeek, horizon, totals } from '../lib/analytics'
 import type { Bundle } from '../lib/persistence'
@@ -46,7 +46,7 @@ interface Actions {
   updateStage: (id: string, patch: { name?: string; probability?: number }) => void
 
   // opportunities
-  addOpportunity: () => string
+  addOpportunity: (type?: ProjectType) => string
   updateOpportunity: (id: string, patch: Partial<Opportunity>) => void
   removeOpportunity: (id: string) => void
   duplicateOpportunity: (id: string) => void
@@ -146,12 +146,14 @@ export const useStore = create<Store>()(
         })),
 
       // ---- opportunities ----
-      addOpportunity: () => {
+      addOpportunity: (type = 'external') => {
         const id = uid('opp')
+        const internal = type === 'internal'
         const opp: Opportunity = {
           id,
-          name: 'New opportunity',
+          name: internal ? 'New internal project' : 'New opportunity',
           client: '',
+          type,
           stageId: get().stages[0]?.id ?? 'lead',
           dealValue: 0,
           booking: 'forecast',
