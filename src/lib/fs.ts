@@ -51,9 +51,20 @@ async function writeJson(dir: DirHandle, path: string, data: unknown): Promise<v
   await w.close()
 }
 
-/** Read a full bundle from a connected /data folder. */
+/** Resolve the data folder: prefer <repo>/public/data (what the app serves),
+ *  fall back to <dir>/data. Lets you Connect to the repo root directly. */
+async function resolveDataDir(dir: DirHandle, create: boolean): Promise<DirHandle> {
+  try {
+    const pub = await dir.getDirectoryHandle('public', { create: false })
+    return await pub.getDirectoryHandle('data', { create })
+  } catch {
+    return await dir.getDirectoryHandle('data', { create })
+  }
+}
+
+/** Read a full bundle from a connected repo (public/data or data). */
 export async function readBundle(dir: DirHandle): Promise<Bundle> {
-  const dataDir = await dir.getDirectoryHandle('data', { create: false })
+  const dataDir = await resolveDataDir(dir, false)
   const manifest = await readJson(dataDir, 'manifest.json')
   const roster = await readJson(dataDir, 'roster.json')
   const stages = await readJson(dataDir, 'stages.json')
@@ -72,7 +83,7 @@ export async function readBundle(dir: DirHandle): Promise<Bundle> {
 
 /** Write the full bundle back out as per-file JSON, pruning removed opps. */
 export async function writeBundle(dir: DirHandle, bundle: Bundle): Promise<void> {
-  const dataDir = await dir.getDirectoryHandle('data', { create: true })
+  const dataDir = await resolveDataDir(dir, true)
   await writeJson(dataDir, 'roster.json', bundle.roster)
   await writeJson(dataDir, 'stages.json', bundle.stages)
   await writeJson(dataDir, 'snapshots.json', bundle.snapshots)

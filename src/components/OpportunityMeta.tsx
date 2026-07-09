@@ -16,6 +16,7 @@ export function OpportunityMeta({ opp, onClose }: { opp: Opportunity; onClose?: 
   const removeOpportunity = useStore((s) => s.removeOpportunity)
   const duplicateOpportunity = useStore((s) => s.duplicateOpportunity)
   const addAssignment = useStore((s) => s.addAssignment)
+  const removeAssignment = useStore((s) => s.removeAssignment)
 
   const [personPick, setPersonPick] = useState('')
   const [roleText, setRoleText] = useState('')
@@ -119,7 +120,44 @@ export function OpportunityMeta({ opp, onClose }: { opp: Opportunity; onClose?: 
         )}
       </div>
 
-      <div className="row wrap" style={{ gap: 20, marginTop: 16 }}>
+      <div className="section-title" style={{ marginTop: 18 }}>Roles on this opportunity</div>
+      <div className="row wrap" style={{ gap: 20, alignItems: 'flex-start' }}>
+        {(['energy', 'delivery'] as const).map((group) => {
+          const list = opp.assignments.filter((a) => a.group === group)
+          return (
+            <div key={group} style={{ flex: '1 1 240px', minWidth: 220 }}>
+              <span className={`teamtag ${group}`}>{group === 'energy' ? 'Energy team' : 'Delivery team'}</span>
+              <div style={{ marginTop: 6, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                {list.length === 0 ? (
+                  <span className="faint" style={{ fontSize: 12 }}>none yet</span>
+                ) : (
+                  list.map((a) => {
+                    const person = a.personId ? roster.find((p) => p.id === a.personId) : undefined
+                    return (
+                      <div key={a.id} className="manage-row">
+                        <span className="row" style={{ gap: 6, minWidth: 0 }}>
+                          <span className={`swatch ${group}`} />
+                          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {person ? person.name : a.role}
+                            <span className="faint" style={{ marginLeft: 5, fontSize: 11 }}>{person ? person.role : 'role'}</span>
+                          </span>
+                        </span>
+                        <button
+                          className="btn ghost sm danger"
+                          onClick={() => { if (confirm(`Remove ${person ? person.name : a.role} from “${opp.name}”? This deletes their planned FTE.`)) removeAssignment(opp.id, a.id) }}
+                        >Remove</button>
+                      </div>
+                    )
+                  })
+                )}
+              </div>
+            </div>
+          )
+        })}
+      </div>
+
+      <div className="section-title" style={{ marginTop: 18 }}>Add a role</div>
+      <div className="row wrap" style={{ gap: 20 }}>
         <div className="row" style={{ gap: 8 }}>
           <select value={personPick} onChange={(e) => setPersonPick(e.target.value)} style={{ minWidth: 210 }}>
             <option value="">Add named person…</option>

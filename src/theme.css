@@ -118,7 +118,7 @@ label.field { display: flex; flex-direction: column; gap: 4px; font-size: 12px; 
 
 /* ---- main / cards ---- */
 .main { flex: 1; overflow: auto; padding: 20px; }
-.grid { display: grid; gap: 16px; }
+.grid { display: grid; gap: 16px; grid-template-columns: minmax(0, 1fr); }
 .card {
   background: linear-gradient(180deg, #ffffff 0%, #fdfdfb 100%);
   border: 1px solid var(--border); border-radius: var(--r); padding: 16px; box-shadow: var(--shadow);
@@ -192,6 +192,8 @@ a { color: var(--blue); }
 
 .revenue-note { margin-top: 14px; padding: 8px 12px; border-radius: var(--r-sm); background: rgba(70, 102, 230, 0.07); border: 1px solid rgba(70, 102, 230, 0.18); font-size: 12.5px; color: var(--text-dim); }
 .revenue-note b { color: var(--text); font-variant-numeric: tabular-nums; }
+.manage-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 4px 6px 4px 8px; border: 1px solid var(--border); border-radius: var(--r-sm); background: #fff; font-size: 13px; }
+.manage-row:hover { border-color: var(--border-strong); }
 
 /* ---- modal ---- */
 .modal-backdrop {
@@ -262,7 +264,26 @@ a { color: var(--blue); }
 .gantt .gbar:hover { box-shadow: 0 2px 8px rgba(60, 50, 140, 0.4); }
 .gantt .gbar.dragging { cursor: grabbing; box-shadow: 0 6px 18px rgba(60, 50, 140, 0.42); z-index: 5; }
 .gantt .gbar.signed { background: linear-gradient(135deg, #0e8a56 0%, #16a06c 100%); box-shadow: 0 1px 3px rgba(14, 122, 78, 0.32); }
-.gantt .gbar-label { padding: 0 10px; color: #fff; font-size: 11px; font-weight: 600; white-space: nowrap; pointer-events: none; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.28); font-variant-numeric: tabular-nums; }
+.gantt .gbar-label { padding: 0 10px; color: #fff; font-size: 11px; font-weight: 600; white-space: nowrap; pointer-events: none; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.28); font-variant-numeric: tabular-nums; flex: 1; overflow: hidden; text-overflow: ellipsis; }
+/* right-edge resize grip */
+.gantt .gbar-resize { position: absolute; right: 0; top: 0; bottom: 0; width: 10px; cursor: ew-resize; z-index: 3; }
+.gantt .gbar-resize::after { content: ''; position: absolute; right: 3px; top: 50%; transform: translateY(-50%); width: 2px; height: 10px; background: rgba(255, 255, 255, 0.6); border-radius: 1px; }
+.gantt .gbar:hover .gbar-resize::after { background: #fff; }
+.gantt tr.barrow.grabbing .gbar-resize, .gantt .gbar.resizing .gbar-resize { cursor: ew-resize; }
+
+/* team distinction on role rows */
+.gantt .lab.role.team-energy { border-left: 4px solid var(--energy); padding-left: 9px; }
+.gantt .lab.role.team-delivery { border-left: 4px solid var(--delivery); padding-left: 9px; }
+.teamtag { font-size: 9.5px; font-weight: 650; padding: 1px 6px; border-radius: 4px; text-transform: uppercase; letter-spacing: 0.3px; white-space: nowrap; }
+.teamtag.energy { background: rgba(70, 102, 230, 0.13); color: #2c46c4; }
+.teamtag.delivery { background: rgba(138, 84, 224, 0.13); color: #6a3fce; }
+.mini-btn.danger:hover { border-color: var(--bad); color: var(--bad); background: rgba(198, 43, 60, 0.06); }
+
+/* quick-add + edit banner */
+.gantt tr.addrow td.addcell { position: sticky; left: 0; background: #eef1f8; padding: 5px 10px; }
+.quick-add { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 12px; }
+.quick-add select, .quick-add input { padding: 4px 8px; font-size: 12px; }
+.edit-banner { margin: 2px 0 12px; padding: 6px 12px; border-radius: var(--r-sm); background: rgba(154, 91, 0, 0.09); border: 1px solid rgba(154, 91, 0, 0.25); color: var(--warn); font-size: 12px; }
 
 /* ---- score cards (utilization) ---- */
 .scorecards { display: grid; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); gap: 14px; }
