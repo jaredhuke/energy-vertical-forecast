@@ -5,12 +5,14 @@
 // else the app falls back to JSON import/export (see persistence.ts).
 //
 // File layout written into the chosen folder:
+//   data/dataset.json           consolidated read-file the deployed app fetches
 //   data/stages.json
 //   data/snapshots.json
 //   data/manifest.json          { opportunities: [id, ...] }
 //   data/roster/<id>.json       one file per person
 //   data/opportunities/<id>.json  one file per opportunity
-// One file per entity so two editors never overwrite each other's changes.
+// One file per entity so two editors never overwrite each other's changes;
+// dataset.json is regenerated on every Save so no CI step is needed for data.
 // ---------------------------------------------------------------------------
 import type { Bundle } from './persistence'
 import type { Opportunity, Person } from '../types'
@@ -116,9 +118,14 @@ async function writeDirJson(
  *  One file per person / per opportunity keeps different editors merge-clean. */
 export async function writeBundle(dir: DirHandle, bundle: Bundle): Promise<void> {
   const dataDir = await resolveDataDir(dir, true)
+  const roster = [...bundle.roster].sort((a, b) => a.id.localeCompare(b.id))
+  const opportunities = [...bundle.opportunities].sort((a, b) => a.id.localeCompare(b.id))
   await writeJson(dataDir, 'stages.json', bundle.stages)
   await writeJson(dataDir, 'snapshots.json', bundle.snapshots)
-  await writeJson(dataDir, 'manifest.json', { opportunities: bundle.opportunities.map((o) => o.id) })
-  await writeDirJson(dataDir, 'roster', bundle.roster)
-  await writeDirJson(dataDir, 'opportunities', bundle.opportunities)
+  await writeJson(dataDir, 'manifest.json', { opportunities: opportunities.map((o) => o.id) })
+  await writeDirJson(dataDir, 'roster', roster)
+  await writeDirJson(dataDir, 'opportunities', opportunities)
+  // The consolidated read-file the deployed app fetches — kept current on every
+  // Save so a plain commit+push publishes the shared data (no CI needed).
+  await writeJson(dataDir, 'dataset.json', { roster, stages: bundle.stages, opportunities, snapshots: bundle.snapshots })
 }
