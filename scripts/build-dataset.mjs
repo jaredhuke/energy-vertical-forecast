@@ -9,15 +9,20 @@ import { dirname, join } from 'node:path'
 const here = dirname(fileURLToPath(import.meta.url))
 const dataDir = join(here, '..', 'public', 'data')
 const oppDir = join(dataDir, 'opportunities')
+const rosterDir = join(dataDir, 'roster')
 
 const readJson = (p) => JSON.parse(readFileSync(p, 'utf8'))
+const readDir = (dir) =>
+  readdirSync(dir)
+    .filter((f) => f.endsWith('.json'))
+    .map((f) => readJson(join(dir, f)))
+    .sort((a, b) => String(a.id).localeCompare(String(b.id)))
 
-const roster = readJson(join(dataDir, 'roster.json'))
+// One file per person / per opportunity so two editors never overwrite each
+// other; stages is a single rarely-edited file.
+const roster = readDir(rosterDir)
 const stages = readJson(join(dataDir, 'stages.json'))
-const opportunities = readdirSync(oppDir)
-  .filter((f) => f.endsWith('.json'))
-  .map((f) => readJson(join(oppDir, f)))
-  .sort((a, b) => String(a.id).localeCompare(String(b.id)))
+const opportunities = readDir(oppDir)
 
 // Bundle shape (matches persistence.ts `Bundle`): no snapshots in the seed.
 const dataset = { roster, stages, opportunities, snapshots: [] }

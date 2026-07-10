@@ -5,14 +5,15 @@
 // else the app falls back to JSON import/export (see persistence.ts).
 //
 // File layout written into the chosen folder:
-//   data/roster.json
 //   data/stages.json
 //   data/snapshots.json
 //   data/manifest.json          { opportunities: [id, ...] }
-//   data/opportunities/<id>.json
+//   data/roster/<id>.json       one file per person
+//   data/opportunities/<id>.json  one file per opportunity
+// One file per entity so two editors never overwrite each other's changes.
 // ---------------------------------------------------------------------------
 import type { Bundle } from './persistence'
-import type { Opportunity } from '../types'
+import type { Opportunity, Person } from '../types'
 
 // Minimal typings — the DOM lib doesn't always ship these.
 type DirHandle = any
@@ -62,11 +63,26 @@ async function resolveDataDir(dir: DirHandle, create: boolean): Promise<DirHandl
   }
 }
 
+/** Read every *.json file in a subdirectory, sorted by id (order-stable). */
+async function readDirJson<T extends { id: string }>(dataDir: DirHandle, sub: string): Promise<T[]> {
+  const out: T[] = []
+  try {
+    const subDir = await dataDir.getDirectoryHandle(sub, { create: false })
+    for await (const [name, h] of (subDir as any).entries()) {
+      if (h.kind === 'file' && name.endsWith('.json')) {
+        out.push(JSON.parse(await (await h.getFile()).text()))
+      }
+    }
+  } catch {
+    /* directory absent → empty */
+  }
+  return out.sort((a, b) => a.id.localeCompare(b.id))
+}
+
 /** Read a full bundle from a connected repo (public/data or data). */
 export async function readBundle(dir: DirHandle): Promise<Bundle> {
   const dataDir = await resolveDataDir(dir, false)
-  const manifest = await readJson(dataDir, 'manifest.json')
-  const roster = await readJson(dataDir, 'roster.json')
+  const roster = await readDirJson<Person>(dataDir, 'roster')
   const stages = await readJson(dataDir, 'stages.json')
   let snapshots: Bundle['snapshots'] = []
   try {
@@ -74,30 +90,35 @@ export async function readBundle(dir: DirHandle): Promise<Bundle> {
   } catch {
     snapshots = []
   }
-  const opportunities: Opportunity[] = []
-  for (const id of manifest.opportunities as string[]) {
-    opportunities.push(await readJson(dataDir, `opportunities/${id}.json`))
-  }
+  const opportunities = await readDirJson<Opportunity>(dataDir, 'opportunities')
   return { roster, stages, opportunities, snapshots }
 }
 
-/** Write the full bundle back out as per-file JSON, pruning removed opps. */
+/** Write every entity in a subdirectory as <id>.json, pruning removed files. */
+async function writeDirJson(
+  dataDir: DirHandle,
+  sub: string,
+  items: { id: string }[],
+): Promise<void> {
+  const subDir = await dataDir.getDirectoryHandle(sub, { create: true })
+  const keep = new Set(items.map((it) => `${it.id}.json`))
+  for await (const [name, h] of (subDir as any).entries()) {
+    if (h.kind === 'file' && name.endsWith('.json') && !keep.has(name)) {
+      await subDir.removeEntry(name)
+    }
+  }
+  for (const it of items) {
+    await writeJson(subDir, `${it.id}.json`, it)
+  }
+}
+
+/** Write the full bundle back out as per-file JSON, pruning removed files.
+ *  One file per person / per opportunity keeps different editors merge-clean. */
 export async function writeBundle(dir: DirHandle, bundle: Bundle): Promise<void> {
   const dataDir = await resolveDataDir(dir, true)
-  await writeJson(dataDir, 'roster.json', bundle.roster)
   await writeJson(dataDir, 'stages.json', bundle.stages)
   await writeJson(dataDir, 'snapshots.json', bundle.snapshots)
   await writeJson(dataDir, 'manifest.json', { opportunities: bundle.opportunities.map((o) => o.id) })
-
-  const oppDir = await dataDir.getDirectoryHandle('opportunities', { create: true })
-  const keep = new Set(bundle.opportunities.map((o) => `${o.id}.json`))
-  // prune stale files
-  for await (const [name, h] of (oppDir as any).entries()) {
-    if (h.kind === 'file' && name.endsWith('.json') && !keep.has(name)) {
-      await oppDir.removeEntry(name)
-    }
-  }
-  for (const o of bundle.opportunities) {
-    await writeJson(oppDir, `${o.id}.json`, o)
-  }
+  await writeDirJson(dataDir, 'roster', bundle.roster)
+  await writeDirJson(dataDir, 'opportunities', bundle.opportunities)
 }

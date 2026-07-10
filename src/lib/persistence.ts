@@ -3,9 +3,13 @@ import { effectiveProbability, stageName } from './funnel'
 import { addWeeks, isoWeekNum } from './weeks'
 
 // Seed data bundled at build time (not fetched) so the app works from any
-// host AND from a single-file / file:// build with no network.
-import rosterSeed from '../../public/data/roster.json'
+// host AND from a single-file / file:// build with no network. One file per
+// person / per opportunity (so two editors never overwrite each other).
 import stagesSeed from '../../public/data/stages.json'
+const rosterModules = import.meta.glob('../../public/data/roster/*.json', {
+  eager: true,
+  import: 'default',
+})
 const oppModules = import.meta.glob('../../public/data/opportunities/*.json', {
   eager: true,
   import: 'default',
@@ -94,9 +98,10 @@ export function exportCsv(state: ForecastState) {
 /** Seed data (bundled from /public/data at build time) for first run. */
 export async function loadSeed(): Promise<Bundle | null> {
   try {
+    const roster = Object.values(rosterModules) as Person[]
     const opportunities = Object.values(oppModules) as Opportunity[]
     return {
-      roster: rosterSeed as Person[],
+      roster: roster.sort((a, b) => a.id.localeCompare(b.id)),
       stages: stagesSeed as StageDef[],
       opportunities: opportunities.sort((a, b) => a.id.localeCompare(b.id)),
       snapshots: [],

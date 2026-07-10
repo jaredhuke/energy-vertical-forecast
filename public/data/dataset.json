@@ -1,15 +1,6 @@
 {
   "roster": [
     {
-      "id": "p-jhuke",
-      "name": "J. Huke",
-      "group": "energy",
-      "level": "Sr Principal",
-      "title": "Energy Vertical Lead",
-      "role": "Solution Lead",
-      "capacity": 0.6
-    },
-    {
       "id": "p-arivera",
       "name": "A. Rivera",
       "group": "energy",
@@ -17,6 +8,33 @@
       "title": "Solution Architect",
       "role": "Solution Architect",
       "capacity": 1
+    },
+    {
+      "id": "p-dkim",
+      "name": "D. Kim",
+      "group": "energy",
+      "level": "Consultant",
+      "title": "Consultant",
+      "role": "Consultant",
+      "capacity": 1
+    },
+    {
+      "id": "p-efaure",
+      "name": "E. Faure",
+      "group": "delivery",
+      "level": "Senior",
+      "title": "Product Designer",
+      "role": "Design",
+      "capacity": 1
+    },
+    {
+      "id": "p-jhuke",
+      "name": "J. Huke",
+      "group": "energy",
+      "level": "Sr Principal",
+      "title": "Energy Vertical Lead",
+      "role": "Solution Lead",
+      "capacity": 0.6
     },
     {
       "id": "p-lchen",
@@ -37,33 +55,6 @@
       "capacity": 1
     },
     {
-      "id": "p-spatel",
-      "name": "S. Patel",
-      "group": "energy",
-      "level": "Senior",
-      "title": "Domain SME",
-      "role": "Domain SME",
-      "capacity": 0.8
-    },
-    {
-      "id": "p-dkim",
-      "name": "D. Kim",
-      "group": "energy",
-      "level": "Consultant",
-      "title": "Consultant",
-      "role": "Consultant",
-      "capacity": 1
-    },
-    {
-      "id": "p-tnguyen",
-      "name": "T. Nguyen",
-      "group": "delivery",
-      "level": "Lead",
-      "title": "Data Science Lead",
-      "role": "Data Scientist",
-      "capacity": 1
-    },
-    {
       "id": "p-rgomez",
       "name": "R. Gomez",
       "group": "delivery",
@@ -73,12 +64,21 @@
       "capacity": 1
     },
     {
-      "id": "p-efaure",
-      "name": "E. Faure",
-      "group": "delivery",
+      "id": "p-spatel",
+      "name": "S. Patel",
+      "group": "energy",
       "level": "Senior",
-      "title": "Product Designer",
-      "role": "Design",
+      "title": "Domain SME",
+      "role": "Domain SME",
+      "capacity": 0.8
+    },
+    {
+      "id": "p-tnguyen",
+      "name": "T. Nguyen",
+      "group": "delivery",
+      "level": "Lead",
+      "title": "Data Science Lead",
+      "role": "Data Scientist",
       "capacity": 1
     }
   ],
