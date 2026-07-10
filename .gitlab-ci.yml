@@ -1,6 +1,6 @@
-# Internal hosting on git.epam.com GitLab Pages — reachable only by EPAM
-# single sign-on, so no password is needed. Builds the Vite app and publishes
-# it as the `public/` artifact GitLab Pages serves.
+# Hosting on git.epam.com GitLab Pages, public at EPAM (create the project with
+# visibility = Public so anyone at EPAM can open it). Builds the Vite app and
+# publishes it as the `public/` artifact GitLab Pages serves.
 #
 # GitLab Pages requires the output in a directory literally named `public`.
 # Vite uses `public/` for SOURCE static assets and builds to `dist/`, so the

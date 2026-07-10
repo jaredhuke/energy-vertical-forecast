@@ -43,13 +43,14 @@ local copy; edits save to their browser. (The git "Connect repo" sync only works
 when served over http/localhost, not from `file://` — use **Import/JSON** to move
 data in the single-file version.)
 
-## Hosted internally (git.epam.com GitLab Pages)
+## Hosted at EPAM (git.epam.com GitLab Pages), public
 
-The app is hosted **inside EPAM** on git.epam.com GitLab Pages, reachable only
-by EPAM single sign-on — access control with no password to manage. The front
-end reads its data from a dataset file served alongside the app.
+The app is hosted at EPAM on git.epam.com GitLab Pages with **public**
+visibility — anyone at EPAM can open the link, no login or project membership
+needed. The front end reads its data from a dataset file served alongside it.
 
-- **Internal site:** your project's GitLab Pages URL (Settings → Pages).
+- **Site:** your project's GitLab Pages URL (Settings → Pages). Public requires
+  the **project visibility = Public** when you create it.
 - **Dataset:** `…/data/dataset.json` (roster + stages + opportunities in one
   file). The front end fetches it on load.
 - **How it deploys:** every push to `main` runs [`.gitlab-ci.yml`](.gitlab-ci.yml)
@@ -61,9 +62,9 @@ end reads its data from a dataset file served alongside the app.
 rebuilds and `dataset.json` updates. In the app, **Load published data** pulls
 the latest over the working copy.
 
-> Nothing here is public. The GitHub repo, if kept, is a **private** off-site
-> mirror only. Real pipeline data lives in SharePoint (see below); the seed
-> data committed to the repo is fictional.
+> The app is public at EPAM; the committed seed data is fictional. Real
+> pipeline data stays in SharePoint (see below) — never commit it to the repo.
+> The GitHub repo, if kept, is a **private** off-site mirror only.
 
 ## Data storage & collaboration
 
