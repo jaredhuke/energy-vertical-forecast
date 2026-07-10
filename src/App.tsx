@@ -150,16 +150,16 @@ export default function App() {
           {fsSupported() &&
             (dirHandle ? (
               <>
-                <button className="btn ghost" onClick={load} disabled={busy === 'load'} title="Re-read data from the repo (pull teammates' changes after a git pull)">
+                <button className="btn ghost" onClick={load} disabled={busy === 'load'} title="Re-read the shared folder (pull teammates' changes — OneDrive sync or git pull)">
                   {busy === 'load' ? 'Loading…' : 'Load ↓'}
                 </button>
-                <button className="btn" onClick={save} disabled={busy === 'save'} title={`Write JSON files into ${dirName}/public/data, then commit & push`}>
+                <button className="btn" onClick={save} disabled={busy === 'save'} title={`Write JSON files into ${dirName} — OneDrive syncs them to the team automatically; in a git clone, commit and push`}>
                   {dirty && <span className="dirty-dot" />} {busy === 'save' ? 'Saving…' : `Save ↑ ${dirName}`}
                 </button>
               </>
             ) : (
-              <button className="btn ghost" onClick={connect} title="Point at your cloned git.epam.com repo folder">
-                Connect repo
+              <button className="btn ghost" onClick={connect} title="Point at the shared data folder — a OneDrive-synced SharePoint library or a cloned git repo">
+                Connect shared folder
               </button>
             ))}
 

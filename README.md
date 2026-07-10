@@ -69,35 +69,48 @@ data** pulls the latest published dataset over the working copy.
 ## Data storage & collaboration
 
 **Working copy:** your browser's localStorage (survives refresh).
-**Shared source of truth:** this repo's `public/data/` — versioned by git, which
-doubles as **snapshot history + backup**. `dataset.json` is the built artifact
-the deployed site reads; the per-entity files below are the source of truth.
+**Shared source of truth:** a shared `data/` folder — one file per person and
+per opportunity, so two editors editing *different* items never touch the same
+file. `dataset.json` is the consolidated read artifact (regenerated on every
+**Save ↑**); the per-entity files are the source of truth.
 
 ```
-public/data/roster.json
-public/data/stages.json
-public/data/manifest.json
-public/data/opportunities/<id>.json   ← one file per opportunity
+data/dataset.json                 ← consolidated read-file (built on Save)
+data/stages.json
+data/manifest.json
+data/roster/<id>.json             ← one file per person
+data/opportunities/<id>.json      ← one file per opportunity
 ```
 
-Collaborative loop for a team of editors (Chromium browsers):
+> **Confidentiality:** real pipeline data (clients, deal values, staffing) is
+> EPAM-internal — share it via SharePoint or git.epam.com only, never a public
+> repo. The demo/seed data in this repo is fictional.
 
-1. Clone the repo from git.epam.com and `git pull` for the latest.
-2. Run the app → **Connect repo** → select this repo's **root** folder.
+### Option A — SharePoint shared folder (EPAM-native, no git)
+
+1. Put the `data/` folder in a SharePoint document library; everyone clicks
+   **Sync** (or *Add shortcut to OneDrive*) so it appears in Finder/Explorer.
+2. Run the app → **Connect shared folder** → pick that synced folder.
+3. **Load ↓** pulls the shared data. Edit. **Save ↑** writes it back —
+   OneDrive syncs it to the team automatically.
+
+SharePoint gives you **per-file version history** (backup/audit) and
+**permissions** (who edits vs who views) for free. If two people edit the
+*same* item while offline, OneDrive keeps both as conflict copies — agree an
+owner per opportunity, same as you would in git.
+
+### Option B — Git clone (versioned snapshots)
+
+1. Clone the repo and `git pull` for the latest.
+2. Run the app → **Connect shared folder** → select the repo's **root** folder.
 3. **Load ↓** to pull the repo's data into the app.
 4. Edit. **Save ↑** writes your changes back into `public/data/`.
 5. `git commit && git push` to share. **Each commit is a snapshot and a backup.**
 
-Because each opportunity is its own file, two people editing *different*
-opportunities never hit a merge conflict. `git pull` + **Load ↓** brings in a
-teammate's changes. For a weekly trend, click **Snapshot** and commit — the
-dashboard sparklines read those.
-
-> No Chromium? Use **Import** / **JSON** to load and download the bundle manually,
-> and commit the downloaded file.
+> No Chromium? Use **Import** / **JSON** to load and download the bundle manually.
 >
-> Want everyone in sync in real time (no git steps)? That needs a small backend —
-> a separate build. The git flow above is the zero-infra default.
+> Want everyone in sync in real time (no sync steps at all)? That needs a small
+> backend — a separate build. The folder flows above are the zero-infra default.
 
 ## Model notes
 

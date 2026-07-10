@@ -1,8 +1,9 @@
 // ---------------------------------------------------------------------------
 // Optional File System Access integration (Chromium browsers). Lets you point
-// the app at your cloned git.epam.com repo's /data folder and read/write the
-// per-opportunity JSON files directly — then you just `git commit`. Everywhere
-// else the app falls back to JSON import/export (see persistence.ts).
+// the app at the SHARED DATA FOLDER — either a OneDrive-synced SharePoint
+// library (no git: Save ↑ writes files, OneDrive syncs them to the team) or a
+// cloned git repo (Save ↑ then commit + push). Everywhere else the app falls
+// back to JSON import/export (see persistence.ts).
 //
 // File layout written into the chosen folder:
 //   data/dataset.json           consolidated read-file the deployed app fetches
