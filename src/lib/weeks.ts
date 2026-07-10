@@ -52,10 +52,11 @@ export function weekRange(startKey: string, count: number): string[] {
   return out
 }
 
-/** Week keys from the current week through the last week of the current year. */
-export function weeksToYearEnd(from: Date = new Date()): string[] {
+/** Week keys from the current week through the last week of December of
+ *  `endYear` — the horizon can span as many future years as the caller wants. */
+export function weeksThroughYear(endYear: number, from: Date = new Date()): string[] {
   const start = weekKeyOf(from)
-  const endMonday = weekKeyOf(new Date(from.getFullYear(), 11, 31))
+  const endMonday = weekKeyOf(new Date(endYear, 11, 31))
   const count = Math.max(1, weeksBetween(start, endMonday) + 1)
   return weekRange(start, count)
 }

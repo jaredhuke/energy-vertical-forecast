@@ -316,10 +316,10 @@ export interface RosterWeekCell {
 export interface RosterUtilRow {
   person: Person
   weekly: RosterWeekCell[]
-  avgUtil: number // mean utilization across the whole horizon (idle weeks included)
-  overWeeks: number // weeks over capacity
-  underWeeks: number // weeks booked but under capacity (spare on active weeks)
-  idleWeeks: number // weeks with zero booking
+  avgUtil: number // mean utilization across the stats window (idle weeks included)
+  overWeeks: number // weeks over capacity (stats window)
+  underWeeks: number // weeks booked but under capacity (stats window)
+  idleWeeks: number // weeks with zero booking (stats window)
   peakUtil: number
 }
 
@@ -327,8 +327,16 @@ const OVER_CAP = 1.02 // above capacity → over-allocated (unsustainable)
 
 /** Per-person weekly utilization + certainty across `weeks`, all roster people.
  *  Bands are relative to `target` (e.g. 0.8): below target = under-utilized,
- *  target..capacity = on target, above capacity = over-allocated. */
-export function rosterUtilization(state: ForecastState, weeks: string[], target: number): RosterUtilRow[] {
+ *  target..capacity = on target, above capacity = over-allocated.
+ *  `statsWeeks` caps the window the summary numbers (average / over / under /
+ *  idle / peak) are computed over, so a multi-year grid doesn't dilute them —
+ *  the weekly cells themselves always span the full horizon. */
+export function rosterUtilization(
+  state: ForecastState,
+  weeks: string[],
+  target: number,
+  statsWeeks: number = weeks.length,
+): RosterUtilRow[] {
   const idx = new Map(weeks.map((w, i) => [w, i]))
   const committed = new Map<string, number[]>()
   const weighted = new Map<string, number[]>()
@@ -363,15 +371,17 @@ export function rosterUtilization(state: ForecastState, weeks: string[], target:
       committed: c[i],
       certainty: c[i] > 0 ? w[i] / c[i] : 0,
     }))
-    const avgUtil = weekly.reduce((s, x) => s + x.util, 0) / (weeks.length || 1)
+    // Summary numbers over the stats window only (the grid may extend years further).
+    const stats = weekly.slice(0, Math.max(1, Math.min(statsWeeks, weekly.length)))
+    const avgUtil = stats.reduce((s, x) => s + x.util, 0) / (stats.length || 1)
     return {
       person: p,
       weekly,
       avgUtil,
-      overWeeks: weekly.filter((x) => x.util > OVER_CAP).length,
-      underWeeks: weekly.filter((x) => x.committed > 0 && x.util < target).length,
-      idleWeeks: weekly.filter((x) => x.committed === 0).length,
-      peakUtil: weekly.reduce((m, x) => Math.max(m, x.util), 0),
+      overWeeks: stats.filter((x) => x.util > OVER_CAP).length,
+      underWeeks: stats.filter((x) => x.committed > 0 && x.util < target).length,
+      idleWeeks: stats.filter((x) => x.committed === 0).length,
+      peakUtil: stats.reduce((m, x) => Math.max(m, x.util), 0),
     }
   })
   // Energy team first, then by average utilization (busiest at the top).

@@ -328,3 +328,6 @@ a { color: var(--blue); }
 .util-grid .ru-stats .ru-under { color: var(--blue); }
 .util-grid td.ru-cell { text-align: center; height: 28px; padding: 0; font-variant-numeric: tabular-nums; color: var(--text); }
 .util-grid td.ru-cell .ru-over-num { font-weight: 700; }
+/* Year boundary: stronger divider + the year itself as the column sub-label. */
+.util-grid th.ys, .util-grid td.ys { border-left: 2px solid var(--border-strong); }
+.util-grid th.ru-wk .wkdate.yr { color: var(--text); font-weight: 650; }

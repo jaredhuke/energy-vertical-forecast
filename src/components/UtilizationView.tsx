@@ -1,9 +1,9 @@
-import { useMemo, useState, type CSSProperties } from 'react'
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { useStore } from '../store/useStore'
 import type { ForecastState } from '../types'
-import { rosterUtilization, utilBand } from '../lib/analytics'
+import { opportunityEndWeek, rosterUtilization, utilBand } from '../lib/analytics'
 import type { RosterUtilRow, RosterWeekCell } from '../lib/analytics'
-import { isoWeekNum, parseKey, weekLabel, weeksToYearEnd } from '../lib/weeks'
+import { isoWeekNum, parseKey, weekLabel, weeksThroughYear } from '../lib/weeks'
 import { fmtPct } from '../lib/format'
 
 const BAND_RGB: Record<'over' | 'on' | 'under', string> = {
@@ -39,31 +39,79 @@ export function UtilizationView() {
   const setTarget = useStore((s) => s.setUtilizationTarget)
 
   const [grain, setGrain] = useState<'week' | 'month'>('week')
+  const colW = grain === 'month' ? 60 : 40
 
   const state = useMemo<ForecastState>(
     () => ({ roster, stages, opportunities, snapshots, editor: '' }),
     [roster, stages, opportunities, snapshots],
   )
-  const weeks = useMemo(() => weeksToYearEnd(), [])
-  const rows = useMemo(() => rosterUtilization(state, weeks, target), [state, weeks, target])
 
-  // Month buckets: consecutive weeks grouped by their Monday's month.
+  // Horizon: as many future years as the screen width allows — never capped at
+  // the current year. Wider screens see further; long deals extend it further.
+  const cardRef = useRef<HTMLDivElement>(null)
+  const [availW, setAvailW] = useState(1280)
+  useEffect(() => {
+    const el = cardRef.current
+    if (!el) return
+    const ro = new ResizeObserver((entries) => setAvailW(entries[0].contentRect.width))
+    ro.observe(el)
+    setAvailW(el.clientWidth)
+    return () => ro.disconnect()
+  }, [])
+  const throughYear = useMemo(() => {
+    const now = new Date()
+    const colsFit = Math.max(1, Math.floor((availW - 268) / colW))
+    const weeksFit = grain === 'month' ? Math.ceil(colsFit * 4.35) : colsFit
+    const fitYear = new Date(now.getFullYear(), now.getMonth(), now.getDate() + weeksFit * 7).getFullYear()
+    const oppYear = opportunities.length
+      ? Math.max(...opportunities.map((o) => parseKey(opportunityEndWeek(o)).getFullYear()))
+      : now.getFullYear()
+    return Math.max(now.getFullYear() + 1, fitYear, oppYear)
+  }, [availW, colW, grain, opportunities])
+  const weeks = useMemo(() => weeksThroughYear(throughYear), [throughYear])
+
+  // Summary numbers cover the next 12 months so the multi-year grid doesn't
+  // dilute averages with far-future idle weeks.
+  const STATS_WEEKS = 52
+  const rows = useMemo(
+    () => rosterUtilization(state, weeks, target, Math.min(STATS_WEEKS, weeks.length)),
+    [state, weeks, target],
+  )
+
+  // Month buckets: consecutive weeks grouped by their Monday's month + year.
   const monthGroups = useMemo(() => {
-    const groups: { label: string; idx: number[] }[] = []
+    const groups: { month: number; year: number; idx: number[] }[] = []
     weeks.forEach((w, i) => {
-      const label = MONTHS[parseKey(w).getMonth()]
+      const d = parseKey(w)
       const last = groups[groups.length - 1]
-      if (last && last.label === label) last.idx.push(i)
-      else groups.push({ label, idx: [i] })
+      if (last && last.month === d.getMonth() && last.year === d.getFullYear()) last.idx.push(i)
+      else groups.push({ month: d.getMonth(), year: d.getFullYear(), idx: [i] })
     })
     return groups
   }, [weeks])
 
+  // Year boundaries are marked: January / first-week-of-year columns show the
+  // year and get a stronger left border.
   const cols =
     grain === 'month'
-      ? monthGroups.map((g) => ({ top: g.label, bottom: `${g.idx.length} weeks`, cell: (r: RosterUtilRow) => aggCells(g.idx.map((i) => r.weekly[i])) }))
-      : weeks.map((w, i) => ({ top: isoWeekNum(w), bottom: weekLabel(w), cell: (r: RosterUtilRow) => r.weekly[i] }))
-  const colW = grain === 'month' ? 60 : 40
+      ? monthGroups.map((g) => ({
+          top: MONTHS[g.month],
+          bottom: g.month === 0 ? String(g.year) : `${g.idx.length} weeks`,
+          yearStart: g.month === 0,
+          title: `${MONTHS[g.month]} ${g.year}`,
+          cell: (r: RosterUtilRow) => aggCells(g.idx.map((i) => r.weekly[i])),
+        }))
+      : weeks.map((w, i) => {
+          const d = parseKey(w)
+          const yearStart = i > 0 && d.getFullYear() !== parseKey(weeks[i - 1]).getFullYear()
+          return {
+            top: isoWeekNum(w),
+            bottom: yearStart ? String(d.getFullYear()) : weekLabel(w),
+            yearStart,
+            title: `${weekLabel(w)}, ${d.getFullYear()}`,
+            cell: (r: RosterUtilRow) => r.weekly[i],
+          }
+        })
 
   const overPeople = rows.filter((r) => r.peakUtil > 1.02).length
   const belowTarget = rows.filter((r) => r.avgUtil < target).length
@@ -79,9 +127,9 @@ export function UtilizationView() {
         Colour strength = booking certainty (funnel close %; signed & internal = 100%).
       </div>
 
-      <div className="card">
+      <div className="card" ref={cardRef}>
         <div className="h-row">
-          <h2>Utilization heatmap — through year end</h2>
+          <h2>Utilization heatmap — through {throughYear}</h2>
           <div className="row wrap" style={{ gap: 14 }}>
             <div className="seg" role="tablist">
               <button className={grain === 'week' ? 'on' : ''} onClick={() => setGrain('week')}>Weekly</button>
@@ -104,8 +152,8 @@ export function UtilizationView() {
 
         <div className="kpis" style={{ marginBottom: 14 }}>
           <div className="kpi"><div className="label">People</div><div className="value num">{rows.length}</div></div>
-          <div className="kpi"><div className="label">Roster average utilization</div><div className="value num" style={{ color: rosterAvg < target ? 'var(--blue)' : rosterAvg > 1.02 ? 'var(--warn)' : 'var(--good)' }}>{fmtPct(rosterAvg)}</div><div className="delta flat">target {targetPct}%</div></div>
-          <div className="kpi"><div className="label">Below target</div><div className="value num" style={{ color: belowTarget ? 'var(--blue)' : 'var(--good)' }}>{belowTarget}</div><div className="delta flat">average under {targetPct}%</div></div>
+          <div className="kpi"><div className="label">Roster average utilization</div><div className="value num" style={{ color: rosterAvg < target ? 'var(--blue)' : rosterAvg > 1.02 ? 'var(--warn)' : 'var(--good)' }}>{fmtPct(rosterAvg)}</div><div className="delta flat">target {targetPct}% · next 12 months</div></div>
+          <div className="kpi"><div className="label">Below target</div><div className="value num" style={{ color: belowTarget ? 'var(--blue)' : 'var(--good)' }}>{belowTarget}</div><div className="delta flat">average under {targetPct}% · next 12 months</div></div>
           <div className="kpi"><div className="label">Over-allocated</div><div className="value num" style={{ color: overPeople ? 'var(--warn)' : 'var(--good)' }}>{overPeople}</div><div className="delta flat">peak &gt; 100%</div></div>
         </div>
 
@@ -124,9 +172,9 @@ export function UtilizationView() {
                 <tr>
                   <th className="ru-lab">Person · average / over / under</th>
                   {cols.map((c, i) => (
-                    <th key={i} className="ru-wk">
+                    <th key={i} className={`ru-wk${c.yearStart ? ' ys' : ''}`} title={c.title}>
                       <span className="wknum">{c.top}</span>
-                      <span className="wkdate">{c.bottom}</span>
+                      <span className={`wkdate${c.yearStart ? ' yr' : ''}`}>{c.bottom}</span>
                     </th>
                   ))}
                 </tr>
@@ -151,7 +199,7 @@ export function UtilizationView() {
                       {cols.map((c, i) => {
                         const cell = c.cell(r)
                         return (
-                          <td key={i} className="ru-cell" style={cellStyle(cell, target)} title={cell.committed ? `${c.top}: ${Math.round(cell.util * 100)}% (target ${targetPct}%) · ${cell.committed.toFixed(2)} FTE · ${Math.round(cell.certainty * 100)}% certain` : `${c.top}: idle`}>
+                          <td key={i} className={`ru-cell${c.yearStart ? ' ys' : ''}`} style={cellStyle(cell, target)} title={cell.committed ? `${c.title}: ${Math.round(cell.util * 100)}% (target ${targetPct}%) · ${cell.committed.toFixed(2)} FTE · ${Math.round(cell.certainty * 100)}% certain` : `${c.title}: idle`}>
                             {cell.committed > 0 ? <span className={cell.util > 1.02 ? 'ru-over-num' : ''}>{Math.round(cell.util * 100)}</span> : null}
                           </td>
                         )
@@ -165,6 +213,8 @@ export function UtilizationView() {
         )}
         <div className="hint" style={{ marginTop: 10 }}>
           Edit allocations in the <button className="linklike" style={{ color: 'var(--blue)', fontWeight: 500 }} onClick={() => setView('opportunities')}>Opportunities timeline</button> — this view updates live.
+          The grid runs through {throughYear} (scroll right; year boundaries are marked); the per-person averages and week
+          counts cover the <b>next 12 months</b> so far-future idle weeks don't dilute them.
         </div>
       </div>
     </div>
