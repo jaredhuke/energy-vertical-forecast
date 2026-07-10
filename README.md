@@ -43,28 +43,27 @@ local copy; edits save to their browser. (The git "Connect repo" sync only works
 when served over http/localhost, not from `file://` — use **Import/JSON** to move
 data in the single-file version.)
 
-## Hosted publicly (GitHub Pages) — light-touch
+## Hosted internally (git.epam.com GitLab Pages)
 
-The site is hosted for free on GitHub Pages, and the front end **reads its data
-from a public dataset file** so viewers always see the published forecast — no
-backend, no database.
+The app is hosted **inside EPAM** on git.epam.com GitLab Pages, reachable only
+by EPAM single sign-on — access control with no password to manage. The front
+end reads its data from a dataset file served alongside the app.
 
-- **Live site:** `https://jaredhuke.github.io/energy-vertical-forecast/`
-- **Public dataset:** `…/data/dataset.json` (a single consolidated file:
-  roster + stages + opportunities). The front end fetches it on load.
-- **How it deploys:** every push to `main` runs
-  [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) → `npm run
-  build` (its `prebuild` step regenerates `public/data/dataset.json` from the
-  per-opportunity source files via [`scripts/build-dataset.mjs`](scripts/build-dataset.mjs))
-  → publishes `dist/` to Pages.
+- **Internal site:** your project's GitLab Pages URL (Settings → Pages).
+- **Dataset:** `…/data/dataset.json` (roster + stages + opportunities in one
+  file). The front end fetches it on load.
+- **How it deploys:** every push to `main` runs [`.gitlab-ci.yml`](.gitlab-ci.yml)
+  → `npm run build` (its `prebuild` step regenerates `public/data/dataset.json`
+  from the per-entity source files via [`scripts/build-dataset.mjs`](scripts/build-dataset.mjs))
+  → publishes the built site to GitLab Pages.
 
 **To publish new numbers:** edit the data (see below), commit, push. Pages
-rebuilds and the public `dataset.json` updates. In the app, **Load published
-data** pulls the latest published dataset over the working copy.
+rebuilds and `dataset.json` updates. In the app, **Load published data** pulls
+the latest over the working copy.
 
-> The published dataset is the **demo/seed data** committed to this repo. Your
-> own in-progress edits stay private in your browser's localStorage until you
-> deliberately write them into `public/data/` and push.
+> Nothing here is public. The GitHub repo, if kept, is a **private** off-site
+> mirror only. Real pipeline data lives in SharePoint (see below); the seed
+> data committed to the repo is fictional.
 
 ## Data storage & collaboration
 

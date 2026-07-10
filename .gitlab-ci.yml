@@ -1,0 +1,21 @@
+# Internal hosting on git.epam.com GitLab Pages — reachable only by EPAM
+# single sign-on, so no password is needed. Builds the Vite app and publishes
+# it as the `public/` artifact GitLab Pages serves.
+#
+# GitLab Pages requires the output in a directory literally named `public`.
+# Vite uses `public/` for SOURCE static assets and builds to `dist/`, so the
+# job builds first (reading the source public/) then replaces public/ with the
+# built dist/. Safe because CI runs on a throwaway checkout.
+image: node:20
+
+pages:
+  stage: deploy
+  script:
+    - npm ci
+    - npm run build            # prebuild regenerates data/dataset.json, then vite → dist/
+    - rm -rf public && mv dist public
+  artifacts:
+    paths:
+      - public
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
