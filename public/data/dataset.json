@@ -1,0 +1,398 @@
+{
+  "roster": [
+    {
+      "id": "p-jhuke",
+      "name": "J. Huke",
+      "group": "energy",
+      "level": "Sr Principal",
+      "title": "Energy Vertical Lead",
+      "role": "Solution Lead",
+      "capacity": 0.6
+    },
+    {
+      "id": "p-arivera",
+      "name": "A. Rivera",
+      "group": "energy",
+      "level": "Principal",
+      "title": "Solution Architect",
+      "role": "Solution Architect",
+      "capacity": 1
+    },
+    {
+      "id": "p-lchen",
+      "name": "L. Chen",
+      "group": "energy",
+      "level": "Lead",
+      "title": "Delivery Manager",
+      "role": "Delivery Manager",
+      "capacity": 1
+    },
+    {
+      "id": "p-mokafor",
+      "name": "M. Okafor",
+      "group": "energy",
+      "level": "Senior",
+      "title": "Business Analyst",
+      "role": "Business Analyst",
+      "capacity": 1
+    },
+    {
+      "id": "p-spatel",
+      "name": "S. Patel",
+      "group": "energy",
+      "level": "Senior",
+      "title": "Domain SME",
+      "role": "Domain SME",
+      "capacity": 0.8
+    },
+    {
+      "id": "p-dkim",
+      "name": "D. Kim",
+      "group": "energy",
+      "level": "Consultant",
+      "title": "Consultant",
+      "role": "Consultant",
+      "capacity": 1
+    },
+    {
+      "id": "p-tnguyen",
+      "name": "T. Nguyen",
+      "group": "delivery",
+      "level": "Lead",
+      "title": "Data Science Lead",
+      "role": "Data Scientist",
+      "capacity": 1
+    },
+    {
+      "id": "p-rgomez",
+      "name": "R. Gomez",
+      "group": "delivery",
+      "level": "Senior",
+      "title": "Software Engineer",
+      "role": "Engineer",
+      "capacity": 1
+    },
+    {
+      "id": "p-efaure",
+      "name": "E. Faure",
+      "group": "delivery",
+      "level": "Senior",
+      "title": "Product Designer",
+      "role": "Design",
+      "capacity": 1
+    }
+  ],
+  "stages": [
+    {
+      "id": "lead",
+      "name": "Lead",
+      "probability": 0.05
+    },
+    {
+      "id": "qualified",
+      "name": "Qualified",
+      "probability": 0.2
+    },
+    {
+      "id": "proposal",
+      "name": "Proposal",
+      "probability": 0.4
+    },
+    {
+      "id": "negotiation",
+      "name": "Negotiation",
+      "probability": 0.7
+    },
+    {
+      "id": "closed",
+      "name": "Closed",
+      "probability": 1
+    }
+  ],
+  "opportunities": [
+    {
+      "id": "opp-atlas",
+      "name": "Atlas Offshore Wind Analytics",
+      "client": "Atlas Renewables",
+      "stageId": "qualified",
+      "dealValue": 1600000,
+      "booking": "forecast",
+      "startWeek": "2026-07-20",
+      "durationWeeks": 10,
+      "notes": "Predictive analytics for offshore wind turbine performance.",
+      "updatedBy": "seed",
+      "assignments": [
+        {
+          "id": "a-at-1",
+          "personId": "p-lchen",
+          "role": "Delivery Manager",
+          "group": "energy",
+          "fte": {
+            "0": 0.3,
+            "1": 0.3,
+            "2": 0.3,
+            "3": 0.3,
+            "4": 0.3,
+            "5": 0.3,
+            "6": 0.3,
+            "7": 0.3,
+            "8": 0.3,
+            "9": 0.3
+          }
+        },
+        {
+          "id": "a-at-2",
+          "personId": "p-spatel",
+          "role": "Domain SME",
+          "group": "energy",
+          "fte": {
+            "0": 0.5,
+            "1": 0.5,
+            "2": 0.5,
+            "3": 0.5,
+            "4": 0.5,
+            "5": 0.5,
+            "6": 0.5,
+            "7": 0.5
+          }
+        },
+        {
+          "id": "a-at-3",
+          "personId": "p-tnguyen",
+          "role": "Data Scientist",
+          "group": "delivery",
+          "fte": {
+            "0": 0.6,
+            "1": 0.6,
+            "2": 0.6,
+            "3": 0.6,
+            "4": 0.6,
+            "5": 0.6,
+            "6": 0.6
+          }
+        },
+        {
+          "id": "a-at-4",
+          "role": "Engineer",
+          "group": "delivery",
+          "fte": {
+            "3": 0.5,
+            "4": 0.5,
+            "5": 0.5,
+            "6": 0.5,
+            "7": 0.5,
+            "8": 0.5,
+            "9": 0.5
+          }
+        }
+      ]
+    },
+    {
+      "id": "opp-nexus",
+      "name": "Nexus Grid Modernization",
+      "client": "Nexus Power",
+      "stageId": "proposal",
+      "dealValue": 2400000,
+      "booking": "forecast",
+      "startWeek": "2026-07-06",
+      "durationWeeks": 12,
+      "notes": "Grid modernization advisory + analytics platform scoping.",
+      "updatedBy": "seed",
+      "assignments": [
+        {
+          "id": "a-nx-1",
+          "personId": "p-arivera",
+          "role": "Solution Architect",
+          "group": "energy",
+          "fte": {
+            "0": 0.5,
+            "1": 0.5,
+            "2": 1,
+            "3": 1,
+            "4": 1,
+            "5": 1,
+            "6": 1,
+            "7": 1,
+            "8": 1,
+            "9": 1,
+            "10": 0.5,
+            "11": 0.5
+          }
+        },
+        {
+          "id": "a-nx-2",
+          "personId": "p-mokafor",
+          "role": "Business Analyst",
+          "group": "energy",
+          "fte": {
+            "0": 0.5,
+            "1": 0.5,
+            "2": 0.5,
+            "3": 0.5,
+            "4": 0.5,
+            "5": 0.5,
+            "6": 0.5,
+            "7": 0.5,
+            "8": 0.5,
+            "9": 0.5
+          }
+        },
+        {
+          "id": "a-nx-3",
+          "personId": "p-tnguyen",
+          "role": "Data Scientist",
+          "group": "delivery",
+          "fte": {
+            "2": 0.6,
+            "3": 0.6,
+            "4": 0.6,
+            "5": 0.6,
+            "6": 0.6,
+            "7": 0.6,
+            "8": 0.6
+          }
+        },
+        {
+          "id": "a-nx-4",
+          "role": "Engineer",
+          "group": "delivery",
+          "fte": {
+            "4": 1,
+            "5": 1,
+            "6": 1,
+            "7": 1,
+            "8": 1,
+            "9": 1,
+            "10": 1,
+            "11": 1
+          }
+        },
+        {
+          "id": "a-nx-5",
+          "role": "Design",
+          "group": "delivery",
+          "fte": {
+            "0": 0.25,
+            "1": 0.25,
+            "2": 0.25,
+            "3": 0.25
+          }
+        }
+      ]
+    },
+    {
+      "id": "opp-orbit",
+      "name": "Orbit Refinery Predictive Maintenance",
+      "client": "Orbit Energy",
+      "stageId": "closed",
+      "dealValue": 1200000,
+      "booking": "signed",
+      "startWeek": "2026-06-29",
+      "durationWeeks": 8,
+      "notes": "Predictive maintenance pilot for refinery rotating equipment.",
+      "updatedBy": "seed",
+      "assignments": [
+        {
+          "id": "a-or-1",
+          "personId": "p-jhuke",
+          "role": "Solution Lead",
+          "group": "energy",
+          "fte": {
+            "0": 0.4,
+            "1": 0.4,
+            "2": 0.4,
+            "3": 0.4,
+            "4": 0.4,
+            "5": 0.4,
+            "6": 0.4,
+            "7": 0.4
+          }
+        },
+        {
+          "id": "a-or-2",
+          "personId": "p-dkim",
+          "role": "Consultant",
+          "group": "energy",
+          "fte": {
+            "0": 1,
+            "1": 1,
+            "2": 1,
+            "3": 1,
+            "4": 1,
+            "5": 1,
+            "6": 1,
+            "7": 1
+          }
+        },
+        {
+          "id": "a-or-3",
+          "personId": "p-rgomez",
+          "role": "Engineer",
+          "group": "delivery",
+          "fte": {
+            "0": 1,
+            "1": 1,
+            "2": 1,
+            "3": 1,
+            "4": 1,
+            "5": 1,
+            "6": 1,
+            "7": 1
+          }
+        },
+        {
+          "id": "a-or-4",
+          "role": "Design",
+          "group": "delivery",
+          "fte": {
+            "0": 0.5,
+            "1": 0.5,
+            "2": 0.5,
+            "3": 0.5
+          }
+        }
+      ]
+    },
+    {
+      "id": "opp-vertex",
+      "name": "Vertex Solar Portfolio Optimization",
+      "client": "Vertex Grid",
+      "stageId": "lead",
+      "dealValue": 800000,
+      "booking": "forecast",
+      "startWeek": "2026-08-10",
+      "durationWeeks": 6,
+      "notes": "Early conversation — portfolio optimization across solar assets.",
+      "updatedBy": "seed",
+      "assignments": [
+        {
+          "id": "a-vx-1",
+          "personId": "p-mokafor",
+          "role": "Business Analyst",
+          "group": "energy",
+          "fte": {
+            "0": 0.3,
+            "1": 0.3,
+            "2": 0.3,
+            "3": 0.3,
+            "4": 0.3,
+            "5": 0.3
+          }
+        },
+        {
+          "id": "a-vx-2",
+          "role": "Data Scientist",
+          "group": "delivery",
+          "fte": {
+            "1": 0.5,
+            "2": 0.5,
+            "3": 0.5,
+            "4": 0.5,
+            "5": 0.5
+          }
+        }
+      ]
+    }
+  ],
+  "snapshots": []
+}

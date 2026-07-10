@@ -43,11 +43,35 @@ local copy; edits save to their browser. (The git "Connect repo" sync only works
 when served over http/localhost, not from `file://` — use **Import/JSON** to move
 data in the single-file version.)
 
-## Data storage & collaboration (git.epam.com)
+## Hosted publicly (GitHub Pages) — light-touch
+
+The site is hosted for free on GitHub Pages, and the front end **reads its data
+from a public dataset file** so viewers always see the published forecast — no
+backend, no database.
+
+- **Live site:** `https://jaredhuke.github.io/energy-vertical-forecast/`
+- **Public dataset:** `…/data/dataset.json` (a single consolidated file:
+  roster + stages + opportunities). The front end fetches it on load.
+- **How it deploys:** every push to `main` runs
+  [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) → `npm run
+  build` (its `prebuild` step regenerates `public/data/dataset.json` from the
+  per-opportunity source files via [`scripts/build-dataset.mjs`](scripts/build-dataset.mjs))
+  → publishes `dist/` to Pages.
+
+**To publish new numbers:** edit the data (see below), commit, push. Pages
+rebuilds and the public `dataset.json` updates. In the app, **Load published
+data** pulls the latest published dataset over the working copy.
+
+> The published dataset is the **demo/seed data** committed to this repo. Your
+> own in-progress edits stay private in your browser's localStorage until you
+> deliberately write them into `public/data/` and push.
+
+## Data storage & collaboration
 
 **Working copy:** your browser's localStorage (survives refresh).
 **Shared source of truth:** this repo's `public/data/` — versioned by git, which
-doubles as **snapshot history + backup**.
+doubles as **snapshot history + backup**. `dataset.json` is the built artifact
+the deployed site reads; the per-entity files below are the source of truth.
 
 ```
 public/data/roster.json

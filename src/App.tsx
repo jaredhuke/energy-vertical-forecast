@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useStore } from './store/useStore'
 import type { View } from './store/useStore'
-import { exportCsv, exportJson, loadSeed, toBundle } from './lib/persistence'
+import { exportCsv, exportJson, loadPublishedDataset, loadSeed, toBundle } from './lib/persistence'
 import { fsSupported, pickDirectory, readBundle, writeBundle } from './lib/fs'
 import { Dashboard } from './components/Dashboard'
 import { OpportunitiesView } from './components/OpportunitiesView'
@@ -28,15 +28,27 @@ export default function App() {
   const fileInput = useRef<HTMLInputElement>(null)
   const [busy, setBusy] = useState('')
 
-  // First-run seed
+  // First run: read the published dataset (the public data the site is hosted
+  // with); fall back to the build-time bundled seed when offline / on file://.
   useEffect(() => {
     if (roster.length === 0 && opportunities.length === 0) {
-      loadSeed().then((b) => {
-        if (b) replaceAll(b)
+      loadPublishedDataset().then((b) => {
+        if (b && (b.opportunities.length || b.roster.length)) replaceAll(b)
+        else loadSeed().then((s) => s && replaceAll(s))
       })
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // Pull the latest published dataset on demand (replaces the working copy).
+  async function loadPublished() {
+    if (dirty && !confirm('Load the latest published data? Your unsaved local changes will be replaced.')) return
+    setBusy('load')
+    const b = await loadPublishedDataset()
+    setBusy('')
+    if (b) replaceAll(b)
+    else alert('No published dataset found. It appears once the site is deployed with public/data/dataset.json.')
+  }
 
   async function connect() {
     const handle = await pickDirectory()
@@ -151,6 +163,9 @@ export default function App() {
               </button>
             ))}
 
+          <button className="btn ghost sm" onClick={loadPublished} disabled={busy === 'load'} title="Fetch the latest published data the site is hosted with (replaces your working copy)">
+            {busy === 'load' ? 'Loading…' : 'Load published data'}
+          </button>
           <button className="btn ghost sm" onClick={() => fileInput.current?.click()}>Import</button>
           <button className="btn ghost sm" onClick={() => exportCsv(useStore.getState())}>CSV</button>
           <button className="btn ghost sm" onClick={() => exportJson(useStore.getState())}>JSON</button>

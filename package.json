@@ -6,6 +6,8 @@
   "description": "Energy Vertical presales forecasting engine — weekly FTE allocation, funnel weighting, capacity, and snapshots.",
   "scripts": {
     "dev": "vite --port 3120",
+    "data:build": "node scripts/build-dataset.mjs",
+    "prebuild": "node scripts/build-dataset.mjs",
     "build": "tsc --noEmit && vite build",
     "build:share": "tsc --noEmit && SHARE=1 vite build",
     "preview": "vite preview --port 3120"

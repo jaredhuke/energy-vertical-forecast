@@ -106,3 +106,29 @@ export async function loadSeed(): Promise<Bundle | null> {
     return null
   }
 }
+
+/** URL of the public dataset the deployed front end reads at runtime.
+ *  Defaults to `<base>data/dataset.json` (served alongside the app); override
+ *  with VITE_DATA_URL to point at any public location (e.g. a raw git URL). */
+export const DATASET_URL: string =
+  import.meta.env.VITE_DATA_URL || `${import.meta.env.BASE_URL}data/dataset.json`.replace(/\/{2,}/g, '/')
+
+/** Fetch the published dataset over the network. Returns null on any failure
+ *  (offline, file://, missing file) so callers can fall back to the bundled
+ *  seed. Uses no-store so editors always pull the latest published data. */
+export async function loadPublishedDataset(url: string = DATASET_URL): Promise<Bundle | null> {
+  try {
+    const res = await fetch(url, { cache: 'no-store' })
+    if (!res.ok) return null
+    const b = await res.json()
+    if (!b || (!Array.isArray(b.opportunities) && !Array.isArray(b.roster))) return null
+    return {
+      roster: b.roster ?? [],
+      stages: b.stages ?? [],
+      opportunities: (b.opportunities ?? []).sort((a: Opportunity, z: Opportunity) => a.id.localeCompare(z.id)),
+      snapshots: b.snapshots ?? [],
+    }
+  } catch {
+    return null
+  }
+}
