@@ -1,43 +1,32 @@
 import { weekLabel, isoWeekNum } from '../lib/weeks'
-import type { WeekDemand } from '../lib/analytics'
-import { signedTotal, weightedTotal } from '../lib/analytics'
+import type { WeekStack } from '../lib/analytics'
 
-// ---- Weekly demand: stacked energy+delivery bars for the chosen metric,
-//      with the other metric drawn as a faint reference line. ----
-export function WeeklyDemandChart({
-  demand,
-  mode,
-}: {
-  demand: WeekDemand[]
-  mode: 'signed' | 'weighted'
-}) {
+const SIGNED_RGB = '22, 160, 108' // green — booked / committed, 100% certain
+const FORECAST_RGB = '37, 99, 235' // blue — forecast; opacity encodes likelihood
+
+// ---- Weekly demand: one stacked bar per week. Green signed/committed floor at
+//      the bottom (certain), forecast stacked on top and fading with its close
+//      % likelihood — most likely just above the floor, longest-shots at the top.
+export function WeeklyDemandChart({ weeks }: { weeks: WeekStack[] }) {
   const H = 200
   const padT = 12
   const padB = 34
   const padL = 30
   const bandW = 40
-  const W = padL + demand.length * bandW + 8
+  const W = padL + weeks.length * bandW + 8
   const plotH = H - padT - padB
 
-  // Weighted forecast is always ≥ signed, so it sets the axis ceiling.
-  const maxVal = Math.max(
-    1,
-    ...demand.map((d) => Math.max(weightedTotal(d), signedTotal(d))),
-  )
+  const maxVal = Math.max(1, ...weeks.map((d) => d.total))
   const niceMax = Math.ceil(maxVal)
   const y = (v: number) => padT + plotH - (v / niceMax) * plotH
+  const hgt = (v: number) => (v / niceMax) * plotH
 
   const barW = 22
   const gridlines = Array.from({ length: niceMax + 1 }, (_, i) => i)
 
-  const otherLine = demand.map((d, i) => {
-    const v = mode === 'signed' ? weightedTotal(d) : signedTotal(d)
-    return `${padL + i * bandW + bandW / 2},${y(v)}`
-  })
-
   return (
     <div style={{ overflowX: 'auto' }}>
-      <svg width={W} height={H} role="img" aria-label="Weekly FTE demand">
+      <svg width={W} height={H} role="img" aria-label="Weekly FTE demand: signed floor plus forecast by likelihood">
         {gridlines.map((g) => (
           <g key={g}>
             <line x1={padL} x2={W} y1={y(g)} y2={y(g)} stroke="var(--border)" strokeWidth={1} />
@@ -46,21 +35,32 @@ export function WeeklyDemandChart({
             </text>
           </g>
         ))}
-        {demand.map((d, i) => {
-          const e = mode === 'signed' ? d.signedEnergy : d.weightedEnergy
-          const dv = mode === 'signed' ? d.signedDelivery : d.weightedDelivery
+        {weeks.map((d, i) => {
           const x = padL + i * bandW + (bandW - barW) / 2
-          const eH = (e / niceMax) * plotH
-          const dH = (dv / niceMax) * plotH
-          const showLbl = i % 2 === 0 || demand.length <= 12
+          const showLbl = i % 2 === 0 || weeks.length <= 12
+          // Build stacked segments from the bottom up: signed floor, then
+          // forecast slices (already sorted most-likely first).
+          const segs: { fte: number; fill: string; label: string }[] = []
+          if (d.signed > 0) segs.push({ fte: d.signed, fill: `rgb(${SIGNED_RGB})`, label: `signed / committed ${d.signed.toFixed(1)}` })
+          for (const f of d.forecast) {
+            segs.push({
+              fte: f.fte,
+              fill: `rgba(${FORECAST_RGB}, ${(0.15 + 0.85 * f.prob).toFixed(3)})`,
+              label: `${Math.round(f.prob * 100)}% likely · ${f.fte.toFixed(1)}`,
+            })
+          }
+          let base = 0 // cumulative FTE from the bottom
           return (
             <g key={i}>
-              <rect x={x} y={y(dv)} width={barW} height={dH} fill="var(--delivery)" opacity={0.9}>
-                <title>{`${weekLabel(d.week)} — delivery ${dv.toFixed(1)}`}</title>
-              </rect>
-              <rect x={x} y={y(e + dv)} width={barW} height={eH} fill="var(--energy)" opacity={0.95}>
-                <title>{`${weekLabel(d.week)} — energy ${e.toFixed(1)}`}</title>
-              </rect>
+              {segs.map((s, j) => {
+                const yTop = y(base + s.fte)
+                base += s.fte
+                return (
+                  <rect key={j} x={x} y={yTop} width={barW} height={hgt(s.fte)} fill={s.fill} stroke="#fff" strokeWidth={0.5}>
+                    <title>{`${weekLabel(d.week)} — ${s.label} FTE`}</title>
+                  </rect>
+                )
+              })}
               {showLbl && (
                 <text x={x + barW / 2} y={H - 20} textAnchor="middle" fontSize="9" fill="var(--text-faint)">
                   {weekLabel(d.week)}
@@ -74,14 +74,6 @@ export function WeeklyDemandChart({
             </g>
           )
         })}
-        {/* reference line for the other metric */}
-        <polyline
-          points={otherLine.join(' ')}
-          fill="none"
-          stroke="var(--text-faint)"
-          strokeWidth={1.5}
-          strokeDasharray="3 3"
-        />
       </svg>
     </div>
   )

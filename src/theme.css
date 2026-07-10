@@ -165,6 +165,8 @@ table.sheet td.num, table.sheet th.num { text-align: right; font-variant-numeric
 .swatch { width: 8px; height: 8px; border-radius: 2px; display: inline-block; }
 .swatch.energy { background: var(--energy); }
 .swatch.delivery { background: var(--delivery); }
+.swatch.signed { background: rgb(22, 160, 108); }
+.swatch.forecast { width: 22px; background: linear-gradient(90deg, rgba(37, 99, 235, 0.9), rgba(37, 99, 235, 0.15)); }
 
 /* ---- misc ---- */
 .row { display: flex; align-items: center; gap: 10px; }

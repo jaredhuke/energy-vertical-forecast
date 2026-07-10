@@ -93,6 +93,48 @@ export const committedTotal = (d: WeekDemand) => d.committedEnergy + d.committed
 export const weightedTotal = (d: WeekDemand) => d.weightedEnergy + d.weightedDelivery
 export const signedTotal = (d: WeekDemand) => d.signedEnergy + d.signedDelivery
 
+// ---------------------------------------------------------------------------
+// Stacked demand: a signed/committed floor (100% certain) plus forecast FTE
+// grouped by close %, so a bar can be drawn green-at-the-bottom with forecast
+// stacked on top, fading as likelihood drops.
+// ---------------------------------------------------------------------------
+export interface ForecastSeg {
+  prob: number // close % (0..1) of this slice
+  fte: number // full (unweighted) FTE at that likelihood
+}
+export interface WeekStack {
+  week: string
+  signed: number // FTE booked (signed deals + internal) — certain
+  forecast: ForecastSeg[] // forecast FTE grouped by close %, most-likely first
+  total: number // signed + all forecast FTE (full height of the bar)
+}
+
+export function demandStackByWeek(state: ForecastState, weeks: string[]): WeekStack[] {
+  const idx = new Map(weeks.map((w, i) => [w, i]))
+  const signed = new Array(weeks.length).fill(0)
+  const forecast: Map<number, number>[] = weeks.map(() => new Map())
+  for (const o of state.opportunities) {
+    const booked = oppIsBooked(o)
+    const prob = oppProbability(state, o) // booked → 1
+    for (const a of o.assignments) {
+      for (let off = 0; off < o.durationWeeks; off++) {
+        const fte = a.fte[String(off)] || 0
+        if (!fte) continue
+        const i = idx.get(addWeeks(o.startWeek, off))
+        if (i == null) continue
+        if (booked) signed[i] += fte
+        else forecast[i].set(prob, (forecast[i].get(prob) || 0) + fte)
+      }
+    }
+  }
+  return weeks.map((w, i) => {
+    const segs = [...forecast[i].entries()]
+      .map(([prob, fte]) => ({ prob, fte }))
+      .sort((a, b) => b.prob - a.prob) // most likely nearest the signed floor
+    return { week: w, signed: signed[i], forecast: segs, total: signed[i] + segs.reduce((s, f) => s + f.fte, 0) }
+  })
+}
+
 export interface PersonLoad {
   person: Person
   byWeek: Record<string, { committed: number; weighted: number }>

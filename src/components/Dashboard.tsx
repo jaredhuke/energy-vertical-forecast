@@ -4,6 +4,7 @@ import type { ForecastState } from '../types'
 import {
   signedTotal,
   demandByWeek,
+  demandStackByWeek,
   energyUtilization,
   funnelCounts,
   horizon,
@@ -37,8 +38,6 @@ export function Dashboard() {
   const stages = useStore((s) => s.stages)
   const roster = useStore((s) => s.roster)
   const snapshots = useStore((s) => s.snapshots)
-  const weightedView = useStore((s) => s.weightedView)
-  const setWeightedView = useStore((s) => s.setWeightedView)
 
   const state = useMemo<ForecastState>(
     () => ({ roster, stages, opportunities, snapshots, editor: '' }),
@@ -47,6 +46,7 @@ export function Dashboard() {
 
   const { weeks } = useMemo(() => horizon(opportunities), [opportunities])
   const demand = useMemo(() => demandByWeek(state, weeks), [state, weeks])
+  const stack = useMemo(() => demandStackByWeek(state, weeks), [state, weeks])
   const t = useMemo(() => totals(demand), [demand])
   const funnel = useMemo(() => funnelCounts(state), [state])
   const roles = useMemo(() => rolesImpacted(state), [state])
@@ -132,22 +132,16 @@ export function Dashboard() {
       <div className="card">
         <div className="h-row">
           <h2>Weekly FTE demand</h2>
-          <div className="row wrap" style={{ gap: 12, justifyContent: 'flex-end' }}>
-            <div className="legend">
-              <span><span className="swatch energy" /> Energy</span>
-              <span><span className="swatch delivery" /> Delivery</span>
-              <span style={{ color: 'var(--text-faint)' }}>--- {weightedView ? 'signed' : 'weighted forecast'}</span>
-            </div>
-            <div className="seg" role="tablist">
-              <button className={weightedView ? 'on' : ''} onClick={() => setWeightedView(true)}>Weighted forecast</button>
-              <button className={!weightedView ? 'on' : ''} onClick={() => setWeightedView(false)}>Signed</button>
-            </div>
+          <div className="legend">
+            <span><span className="swatch signed" /> Signed / committed</span>
+            <span><span className="swatch forecast" /> Forecast</span>
+            <span className="faint" style={{ fontSize: 11 }}>stacked on top · fainter = less likely to close</span>
           </div>
         </div>
         {opportunities.length === 0 ? (
           <div className="empty">No opportunities yet. Add one under the Opportunities tab.</div>
         ) : (
-          <WeeklyDemandChart demand={demand} mode={weightedView ? 'weighted' : 'signed'} />
+          <WeeklyDemandChart weeks={stack} />
         )}
       </div>
 
