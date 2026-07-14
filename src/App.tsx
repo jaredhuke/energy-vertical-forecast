@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useStore } from './store/useStore'
 import type { View } from './store/useStore'
 import { exportCsv, exportJson, loadPublishedDataset, loadSeed, toBundle } from './lib/persistence'
@@ -9,6 +9,45 @@ import { UtilizationView } from './components/UtilizationView'
 import { RevenueView } from './components/RevenueView'
 import { RosterView } from './components/RosterView'
 import { StagesView } from './components/StagesView'
+
+/** Compact dropdown for the data actions so the header stays ONE row of
+ *  uniform-height controls at any window width (zero double-height buttons,
+ *  zero reflow). Closes on outside click and Escape. */
+function DataMenu({ items }: { items: { label: ReactNode; onPick: () => void; disabled?: boolean }[] }) {
+  const [open, setOpen] = useState(false)
+  const wrapRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!open) return
+    const onDown = (e: MouseEvent) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setOpen(false)
+    }
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false)
+    }
+    window.addEventListener('mousedown', onDown)
+    window.addEventListener('keydown', onKey)
+    return () => {
+      window.removeEventListener('mousedown', onDown)
+      window.removeEventListener('keydown', onKey)
+    }
+  }, [open])
+  return (
+    <div className="menu-wrap" ref={wrapRef}>
+      <button className="btn ghost sm" aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((v) => !v)}>
+        Data <span aria-hidden="true" style={{ fontSize: 9 }}>▾</span>
+      </button>
+      {open && (
+        <div className="menu" role="menu">
+          {items.map((it, i) => (
+            <button key={i} role="menuitem" disabled={it.disabled} onClick={() => { setOpen(false); it.onPick() }}>
+              {it.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
 
 export default function App() {
   const view = useStore((s) => s.view)
@@ -174,7 +213,7 @@ export default function App() {
                   {busy === 'load' ? 'Loading…' : 'Load ↓'}
                 </button>
                 <button className="btn" onClick={save} disabled={busy === 'save'} title={`Write JSON files into ${dirName} — OneDrive syncs them to the team automatically; in a git clone, commit and push`}>
-                  {dirty && <span className="dirty-dot" />} {busy === 'save' ? 'Saving…' : `Save ↑ ${dirName}`}
+                  {dirty && <span className="dirty-dot" />} {busy === 'save' ? 'Saving…' : 'Save ↑'} <span className="dirlabel">{dirName}</span>
                 </button>
               </>
             ) : (
@@ -183,12 +222,14 @@ export default function App() {
               </button>
             ))}
 
-          <button className="btn ghost sm" onClick={loadPublished} disabled={busy === 'load'} title="Fetch the latest published data the site is hosted with (replaces your working copy)">
-            {busy === 'load' ? 'Loading…' : 'Load published data'}
-          </button>
-          <button className="btn ghost sm" onClick={() => fileInput.current?.click()}>Import</button>
-          <button className="btn ghost sm" onClick={() => exportCsv(useStore.getState())}>CSV</button>
-          <button className="btn ghost sm" onClick={() => exportJson(useStore.getState())}>JSON</button>
+          <DataMenu
+            items={[
+              { label: 'Load published data', onPick: loadPublished, disabled: busy === 'load' },
+              { label: 'Import JSON…', onPick: () => fileInput.current?.click() },
+              { label: 'Export CSV', onPick: () => exportCsv(useStore.getState()) },
+              { label: 'Export JSON', onPick: () => exportJson(useStore.getState()) },
+            ]}
+          />
           <button className="btn primary sm" onClick={snapshot}>Snapshot</button>
           <input ref={fileInput} type="file" accept="application/json" hidden onChange={onImportFile} />
           </div>

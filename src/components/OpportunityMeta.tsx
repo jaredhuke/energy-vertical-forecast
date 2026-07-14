@@ -124,8 +124,8 @@ export function OpportunityMeta({ opp, onClose }: { opp: Opportunity; onClose?: 
         </div>
         {!internal && (
           <>
-            <label className="field" style={{ flex: '0 1 170px' }}>
-              <span>Deal value — total contract value ($) <span className="faint num">{dealValue > 0 ? `= ${fmtMoney(dealValue)}` : ''}</span></span>
+            <label className="field" style={{ flex: '0 1 170px' }} title="Total contract value in dollars">
+              <span style={{ whiteSpace: 'nowrap' }}>Deal value ($) <span className="faint num">{dealValue > 0 ? `= ${fmtMoney(dealValue)}` : ''}</span></span>
               <input
                 type="number" min={0} step={50000}
                 value={opp.dealValue ?? 0}

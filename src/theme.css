@@ -64,8 +64,31 @@ body {
   border-bottom: 1px solid var(--border);
 }
 .header-row { display: flex; align-items: center; gap: 16px; }
-.controls { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+/* Narrow windows: the whole control group drops below the brand as ONE intact
+   row (scrolling sideways if it must) — buttons never stack or grow taller. */
+@media (max-width: 960px) {
+  .header-row { flex-wrap: wrap; }
+  .controls { width: 100%; justify-content: flex-start; overflow-x: auto; padding-bottom: 2px; }
+}
+/* ONE row of uniform-height controls, always — never wrap into a second row
+   (the "zero double-height buttons" law). The Data menu keeps it narrow. */
+.controls { display: flex; align-items: center; gap: 8px; flex-wrap: nowrap; justify-content: flex-end; min-width: 0; }
 .controls label.row { flex: 0 0 auto; }
+.dirlabel { max-width: 110px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline-block; vertical-align: bottom; }
+
+/* Data dropdown */
+.menu-wrap { position: relative; flex: 0 0 auto; }
+.menu {
+  position: absolute; right: 0; top: 34px; z-index: 500;
+  background: var(--surface); border: 1px solid var(--border-strong); border-radius: var(--r-sm);
+  box-shadow: var(--shadow); min-width: 195px; padding: 4px; display: flex; flex-direction: column;
+}
+.menu button {
+  display: block; width: 100%; text-align: left; background: none; border: none; cursor: pointer;
+  font-size: 13px; color: var(--text); padding: 8px 12px; border-radius: 5px; white-space: nowrap;
+}
+.menu button:hover { background: var(--surface-2); }
+.menu button:disabled { color: var(--text-faint); cursor: default; background: none; }
 .brand { display: flex; align-items: baseline; gap: 10px; }
 .brand h1 { font-size: 15px; font-weight: 650; margin: 0; letter-spacing: 0.2px; }
 .brand .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--grad); display: inline-block; }
