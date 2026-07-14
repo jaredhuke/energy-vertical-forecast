@@ -12,7 +12,7 @@ import { isoWeekNum, weekLabel, weeksThroughYear } from '../lib/weeks'
 import { fmtMoneyFull, fmtPct } from '../lib/format'
 
 const BAND_RGB: Record<'over' | 'on' | 'under', string> = {
-  over: '229, 90, 90',
+  over: '224, 114, 66', // orange-red (matches the heatmap; low vibration)
   on: '46, 176, 120',
   under: '91, 140, 255',
 }

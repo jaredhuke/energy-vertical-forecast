@@ -199,10 +199,12 @@ export function GanttView() {
       return clamped
     }
     let lastW = origW
+    tableRef.current?.classList.add('col-resizing')
     const move = (ev: PointerEvent) => {
       lastW = apply(origW + (ev.clientX - startX))
     }
     const finish = (commit: boolean) => {
+      tableRef.current?.classList.remove('col-resizing')
       window.removeEventListener('pointermove', move)
       window.removeEventListener('pointerup', up)
       window.removeEventListener('pointercancel', cancel)

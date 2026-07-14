@@ -26,7 +26,7 @@
 
   --good: #0e7a4e;
   --warn: #9a5b00;
-  --bad: #c62b3c;
+  --bad: #d4592c;            /* orange-red — warmer than a true red to avoid colour vibration against the blues/greens */
 
   --r-sm: 6px;
   --r: 10px;
@@ -248,12 +248,21 @@ a { color: var(--blue); }
 .gantt th.wk.today .wknum { color: var(--blue); }
 
 .gantt .lab { position: sticky; left: 0; z-index: 1; background: #ffffff; text-align: left; padding: 3px 8px; border-right: 1px solid var(--border-strong); }
-/* drag handle on the pinned column's edge (in the header cell) */
+/* grab handle on the pinned column's edge (in the header cell) — always shows
+   a grip so it reads as adjustable, and grows/colours on hover + drag. */
 .gantt thead .lab .col-resize {
-  position: absolute; top: 0; bottom: 0; right: -4px; width: 9px;
-  cursor: col-resize; z-index: 4;
+  position: absolute; top: 0; bottom: 0; right: -7px; width: 14px;
+  cursor: col-resize; z-index: 5; touch-action: none;
+  display: flex; align-items: center; justify-content: center;
 }
-.gantt thead .lab .col-resize:hover { background: linear-gradient(90deg, transparent 2px, var(--blue) 3px, var(--blue) 5px, transparent 6px); opacity: 0.55; }
+.gantt thead .lab .col-resize::before {
+  content: ''; width: 4px; height: 22px; border-radius: 3px;
+  background: rgba(120, 126, 140, 0.5); transition: background .12s, height .12s;
+}
+.gantt thead .lab .col-resize:hover::before,
+.gantt thead .lab .col-resize:active::before { background: var(--blue); height: 28px; }
+/* while dragging, the whole column edge highlights */
+.gantt table.col-resizing .lab { cursor: col-resize; }
 .gantt .lab::after { content: ''; position: absolute; top: 0; bottom: 0; right: -7px; width: 7px; background: linear-gradient(90deg, rgba(30, 32, 50, 0.09), rgba(30, 32, 50, 0)); pointer-events: none; }
 .gantt thead .lab { z-index: 3; color: var(--text-faint); background: var(--surface-2); vertical-align: bottom; padding-bottom: 6px; }
 .gantt .lab.role { padding-left: 12px; background: #f7f6f1; }
