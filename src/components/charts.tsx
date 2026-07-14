@@ -45,7 +45,10 @@ export function WeeklyDemandChart({ weeks }: { weeks: WeekStack[] }) {
           for (const f of d.forecast) {
             segs.push({
               fte: f.fte,
-              fill: `rgba(${FORECAST_RGB}, ${(0.15 + 0.85 * f.prob).toFixed(3)})`,
+              // Opacity encodes likelihood, but the floor is high enough that
+              // even a 5%-likely lead is clearly visible (a ghost slice reads
+              // as "my FTE didn't show up"); the gradient still reads.
+              fill: `rgba(${FORECAST_RGB}, ${(0.38 + 0.52 * f.prob).toFixed(3)})`,
               label: `${Math.round(f.prob * 100)}% likely · ${f.fte.toFixed(1)}`,
             })
           }
