@@ -1,6 +1,14 @@
 import type { ForecastState, Opportunity, Person } from '../types'
 import { effectiveProbability } from './funnel'
-import { addWeeks, weekKeyOf, weeksBetween, weekRange } from './weeks'
+import { addWeeks, parseKey, weekKeyOf, weeksBetween, weekRange } from './weeks'
+
+/** The Monday-of-week an opportunity starts on. In-app data is always
+ *  Monday-keyed, but imported / hand-edited JSON might carry a mid-week date;
+ *  snapping here keeps every offset on the week grid so its FTE lands in the
+ *  right week instead of silently vanishing (idx lookups would miss it). */
+export function oppStartMonday(o: Opportunity): string {
+  return weekKeyOf(parseKey(o.startWeek))
+}
 
 /** FTE-weighting probability. Signed deals and internal projects are certain
  *  work → 100%; forecast deals weight by their funnel close percentage. */
@@ -18,7 +26,7 @@ export function oppIsBooked(o: Opportunity): boolean {
 
 /** Absolute end week key (exclusive-style: start + duration). */
 export function opportunityEndWeek(o: Opportunity): string {
-  return addWeeks(o.startWeek, Math.max(1, o.durationWeeks))
+  return addWeeks(oppStartMonday(o), Math.max(1, o.durationWeeks))
 }
 
 /** The union planning horizon across all opportunities, floored at the
@@ -31,7 +39,8 @@ export function horizon(
   let start = today
   let end = addWeeks(today, minWeeks)
   for (const o of opportunities) {
-    if (weeksBetween(start, o.startWeek) < 0) start = o.startWeek
+    const oStart = oppStartMonday(o)
+    if (weeksBetween(start, oStart) < 0) start = oStart
     const oEnd = opportunityEndWeek(o)
     if (weeksBetween(end, oEnd) > 0) end = oEnd
   }
@@ -66,11 +75,12 @@ export function demandByWeek(state: ForecastState, weeks: string[]): WeekDemand[
   for (const o of state.opportunities) {
     const prob = oppProbability(state, o)
     const booked = oppIsBooked(o)
+    const base = oppStartMonday(o)
     for (const a of o.assignments) {
       for (let off = 0; off < o.durationWeeks; off++) {
         const fte = a.fte[String(off)] || 0
         if (!fte) continue
-        const week = addWeeks(o.startWeek, off)
+        const week = addWeeks(base, off)
         const i = idx.get(week)
         if (i == null) continue
         const row = rows[i]
@@ -116,11 +126,12 @@ export function demandStackByWeek(state: ForecastState, weeks: string[]): WeekSt
   for (const o of state.opportunities) {
     const booked = oppIsBooked(o)
     const prob = oppProbability(state, o) // booked → 1
+    const base = oppStartMonday(o)
     for (const a of o.assignments) {
       for (let off = 0; off < o.durationWeeks; off++) {
         const fte = a.fte[String(off)] || 0
         if (!fte) continue
-        const i = idx.get(addWeeks(o.startWeek, off))
+        const i = idx.get(addWeeks(base, off))
         if (i == null) continue
         if (booked) signed[i] += fte
         else forecast[i].set(prob, (forecast[i].get(prob) || 0) + fte)
@@ -161,10 +172,11 @@ export function personLoads(state: ForecastState, weeks: string[]): PersonLoad[]
       const person = state.roster.find((p) => p.id === a.personId)
       if (!person) continue
       const load = getLoad(person)
+      const base = oppStartMonday(o)
       for (let off = 0; off < o.durationWeeks; off++) {
         const fte = a.fte[String(off)] || 0
         if (!fte) continue
-        const week = addWeeks(o.startWeek, off)
+        const week = addWeeks(base, off)
         if (!weekSet.has(week)) continue
         const cell = (load.byWeek[week] ||= { committed: 0, weighted: 0 })
         cell.committed += fte
@@ -392,12 +404,13 @@ export function rosterUtilization(
   }
   for (const o of state.opportunities) {
     const cert = oppCertainty(state, o)
+    const base = oppStartMonday(o)
     for (const asg of o.assignments) {
       if (!asg.personId) continue
       for (let off = 0; off < o.durationWeeks; off++) {
         const fte = asg.fte[String(off)] || 0
         if (!fte) continue
-        const i = idx.get(addWeeks(o.startWeek, off))
+        const i = idx.get(addWeeks(base, off))
         if (i == null) continue
         ensure(committed, asg.personId)[i] += fte
         ensure(weighted, asg.personId)[i] += fte * cert
