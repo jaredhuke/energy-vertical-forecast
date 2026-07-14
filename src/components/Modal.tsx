@@ -1,20 +1,40 @@
 import { useEffect, useRef, type ReactNode } from 'react'
 
 /** Lightweight accessible modal: Escape + backdrop-click to close, body scroll
- *  locked while open, keyboard focus moved in on open, trapped while open, and
- *  restored to the invoking element on close. The child provides its own card. */
+ *  locked while open, keyboard focus moved into the first field on open,
+ *  trapped while open, and restored to the invoking element on close. */
 export function Modal({ onClose, children }: { onClose: () => void; children: ReactNode }) {
   const shellRef = useRef<HTMLDivElement>(null)
+  // Keep a live ref to onClose so the key handler never needs it as a dep
+  // (a changing onClose must NOT re-run the focus effect — that steals focus
+  // from whatever field you're typing in on every keystroke).
+  const onCloseRef = useRef(onClose)
+  onCloseRef.current = onClose
 
+  // Focus management + scroll lock — MOUNT/UNMOUNT ONLY.
   useEffect(() => {
     const previouslyFocused = document.activeElement as HTMLElement | null
-    // Move focus into the dialog (the shell itself, so Escape works instantly).
-    shellRef.current?.focus()
+    const shell = shellRef.current
+    // Land focus on the first editable field so you can type immediately.
+    const firstField = shell?.querySelector<HTMLElement>('input, select, textarea')
+    ;(firstField ?? shell)?.focus()
+    const prevOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = prevOverflow
+      previouslyFocused?.focus?.()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
+  // Escape closes; Tab is trapped inside the dialog.
+  useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
+      if (e.key === 'Escape') {
+        onCloseRef.current()
+        return
+      }
       if (e.key === 'Tab' && shellRef.current) {
-        // Keep Tab cycling inside the dialog.
         const focusables = shellRef.current.querySelectorAll<HTMLElement>(
           'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
         )
@@ -32,14 +52,8 @@ export function Modal({ onClose, children }: { onClose: () => void; children: Re
       }
     }
     window.addEventListener('keydown', onKey)
-    const prev = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    return () => {
-      window.removeEventListener('keydown', onKey)
-      document.body.style.overflow = prev
-      previouslyFocused?.focus?.()
-    }
-  }, [onClose])
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
 
   return (
     <div
