@@ -3,7 +3,7 @@
   "name": "Energy Vertical Forecast",
   "domain": "Energy vertical / presales capacity + revenue",
   "phase": "build",
-  "status": "Shipped: resource-loaded Gantt (fluid slide/resize, Energy vs Delivery teams), energy-team utilization, and pull-through revenue (deal value x close %) with signed bookings. Git-repo data store in public/data; collaborative via git.epam.com.",
+  "status": "Shipped: resource-loaded Gantt (fluid slide/resize, resizable Project/role column), signed-vs-forecast stacked demand chart (green committed floor + likelihood-opacity forecast), multi-year utilization horizon, energy-team utilization + pull-through revenue. Collaboration via a consolidated public/data/dataset.json read at runtime + per-file (roster/opportunity) store for a OneDrive-synced SharePoint shared folder. Hosting target = PUBLIC GitLab Pages at git.epam.com (.gitlab-ci.yml ready) — BLOCKED on creating the git.epam.com project; GitHub is a private mirror only. World-class UX/logic audit landed (undo toast, cross-project over-capacity rings, wheel-guards, focus-trap, zero-double-height Data menu). Excel-import template + wizard in progress.",
   "goals": [
     "Forecast weekly FTE across presales opportunities on a resource-loaded Gantt",
     "Weight demand by funnel stage (close %) and split Energy team vs Delivery team",
@@ -11,14 +11,15 @@
     "Collaborate async via a git repo store (public/data), one JSON file per opportunity"
   ],
   "tokenBurn": {
-    "estCloudTokens": 3000000,
-    "estUSD": 36,
-    "basis": "estimate — full app build across the 2026-07-09 Claude Code session (claude-opus-4-8); not metered",
-    "asOf": "2026-07-09",
+    "estCloudTokens": 6000000,
+    "estUSD": 72,
+    "basis": "estimate — initial build 2026-07-09 (~3.0M) + extended session 2026-07-15 (~3.0M: forecast-model + chart rework, multi-year horizon, collaboration/hosting, world-class UX audit) (claude-opus-4-8); not metered. Per-session ledger: ORBIT R-SYS-0265/0266/0268/0272 + R-SYS-0314 (TB-000140).",
+    "asOf": "2026-07-15",
     "measured": false
   },
   "supportingFiles": [
-    { "label": "README", "path": "/Users/jared_huke/Documents/Code/energy-vertical-forecast/README.md", "kind": "spec", "audience": "human" }
+    { "label": "README", "path": "/Users/jared_huke/Documents/Code/energy-vertical-forecast/README.md", "kind": "spec", "audience": "human" },
+    { "label": "GitLab Pages deploy (git.epam.com)", "path": "/Users/jared_huke/Documents/Code/energy-vertical-forecast/.gitlab-ci.yml", "kind": "config", "audience": "human" }
   ],
-  "updatedAt": "2026-07-09"
+  "updatedAt": "2026-07-15"
 }
