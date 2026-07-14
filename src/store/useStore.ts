@@ -24,16 +24,21 @@ interface UiState {
   view: View
   selectedOpportunityId: string | null
   utilizationTarget: number // target utilization (0..1), e.g. 0.8 = 80% billable
+  ganttLabelWidth: number // px width of the pinned Project / role column
   dirHandle: unknown | null // File System Access handle (not persisted)
   dirName: string | null
   dirty: boolean // unsaved changes vs connected folder
   lastDeleted: Opportunity | null // most recent deletion, for the Undo toast (not persisted)
 }
 
+export const GANTT_LABEL_MIN = 180
+export const GANTT_LABEL_MAX = 520
+
 interface Actions {
   setView: (v: View) => void
   selectOpportunity: (id: string | null) => void
   setUtilizationTarget: (t: number) => void
+  setGanttLabelWidth: (w: number) => void
   setEditor: (name: string) => void
 
   // roster
@@ -97,6 +102,7 @@ export const useStore = create<Store>()(
       view: 'dashboard',
       selectedOpportunityId: null,
       utilizationTarget: 0.8,
+      ganttLabelWidth: 240,
       dirHandle: null,
       dirName: null,
       dirty: false,
@@ -106,6 +112,8 @@ export const useStore = create<Store>()(
       setView: (view) => set({ view }),
       selectOpportunity: (selectedOpportunityId) => set({ selectedOpportunityId, view: 'opportunities' }),
       setUtilizationTarget: (t) => set({ utilizationTarget: Math.max(0.1, Math.min(1.2, t)) }),
+      setGanttLabelWidth: (w) =>
+        set({ ganttLabelWidth: Math.max(GANTT_LABEL_MIN, Math.min(GANTT_LABEL_MAX, Math.round(w))) }),
       setEditor: (editor) => set({ editor }),
 
       // ---- roster ----
@@ -319,6 +327,7 @@ export const useStore = create<Store>()(
         snapshots: s.snapshots,
         editor: s.editor,
         utilizationTarget: s.utilizationTarget,
+        ganttLabelWidth: s.ganttLabelWidth,
         view: s.view, // reopen where you left off
       }),
     },

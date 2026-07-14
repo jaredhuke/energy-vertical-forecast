@@ -247,7 +247,13 @@ a { color: var(--blue); }
 .gantt th.wk.today { box-shadow: inset 2px 0 0 var(--blue); }
 .gantt th.wk.today .wknum { color: var(--blue); }
 
-.gantt .lab { position: sticky; left: 0; z-index: 1; background: #ffffff; width: 240px; text-align: left; padding: 3px 8px; border-right: 1px solid var(--border-strong); }
+.gantt .lab { position: sticky; left: 0; z-index: 1; background: #ffffff; text-align: left; padding: 3px 8px; border-right: 1px solid var(--border-strong); }
+/* drag handle on the pinned column's edge (in the header cell) */
+.gantt thead .lab .col-resize {
+  position: absolute; top: 0; bottom: 0; right: -4px; width: 9px;
+  cursor: col-resize; z-index: 4;
+}
+.gantt thead .lab .col-resize:hover { background: linear-gradient(90deg, transparent 2px, var(--blue) 3px, var(--blue) 5px, transparent 6px); opacity: 0.55; }
 .gantt .lab::after { content: ''; position: absolute; top: 0; bottom: 0; right: -7px; width: 7px; background: linear-gradient(90deg, rgba(30, 32, 50, 0.09), rgba(30, 32, 50, 0)); pointer-events: none; }
 .gantt thead .lab { z-index: 3; color: var(--text-faint); background: var(--surface-2); vertical-align: bottom; padding-bottom: 6px; }
 .gantt .lab.role { padding-left: 12px; background: #f7f6f1; }

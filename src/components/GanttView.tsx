@@ -1,5 +1,5 @@
-import { Fragment, useMemo, useState } from 'react'
-import { useStore } from '../store/useStore'
+import { Fragment, useMemo, useRef, useState } from 'react'
+import { GANTT_LABEL_MAX, GANTT_LABEL_MIN, useStore } from '../store/useStore'
 import type { ForecastState, Opportunity } from '../types'
 import { effectiveProbability, stageName } from '../lib/funnel'
 import { personLoads } from '../lib/analytics'
@@ -31,6 +31,11 @@ export function GanttView() {
   const addAssignment = useStore((s) => s.addAssignment)
   const setFte = useStore((s) => s.setFte)
   const addOpportunity = useStore((s) => s.addOpportunity)
+  const labelW = useStore((s) => s.ganttLabelWidth)
+  const setLabelW = useStore((s) => s.setGanttLabelWidth)
+
+  const tableRef = useRef<HTMLTableElement>(null)
+  const labelColRef = useRef<HTMLTableColElement>(null)
 
   const [draggingId, setDraggingId] = useState<string | null>(null)
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
@@ -160,6 +165,57 @@ export function GanttView() {
     window.addEventListener('keydown', key)
   }
 
+  // ---- pinned-column resize: drag the header handle; double-click auto-fits
+  //      the longest name. Live-follows via direct DOM (no re-render churn),
+  //      commits to the store on release; Escape / pointer-cancel aborts.
+  function onLabelResizeDown(e: React.PointerEvent) {
+    if (e.button !== 0) return
+    e.preventDefault()
+    const startX = e.clientX
+    const origW = labelW
+    const apply = (w: number) => {
+      const clamped = Math.max(GANTT_LABEL_MIN, Math.min(GANTT_LABEL_MAX, w))
+      if (labelColRef.current) labelColRef.current.style.width = `${clamped}px`
+      if (tableRef.current) tableRef.current.style.width = `${clamped + weeks.length * COL}px`
+      return clamped
+    }
+    let lastW = origW
+    const move = (ev: PointerEvent) => {
+      lastW = apply(origW + (ev.clientX - startX))
+    }
+    const finish = (commit: boolean) => {
+      window.removeEventListener('pointermove', move)
+      window.removeEventListener('pointerup', up)
+      window.removeEventListener('pointercancel', cancel)
+      window.removeEventListener('keydown', key)
+      if (commit) setLabelW(lastW)
+      else apply(origW)
+    }
+    const up = () => finish(true)
+    const cancel = () => finish(false)
+    const key = (ev: KeyboardEvent) => {
+      if (ev.key === 'Escape') finish(false)
+    }
+    window.addEventListener('pointermove', move)
+    window.addEventListener('pointerup', up)
+    window.addEventListener('pointercancel', cancel)
+    window.addEventListener('keydown', key)
+  }
+  function autoFitLabel() {
+    const table = tableRef.current
+    if (!table) return
+    let max = GANTT_LABEL_MIN
+    // project rows: caret (21) + slide buttons (~84) + paddings (~24)
+    table.querySelectorAll<HTMLElement>('.lab .proj').forEach((el) => {
+      max = Math.max(max, el.scrollWidth + 21 + 84 + 24)
+    })
+    // role rows: teamtag (~74) + indent/padding (~30)
+    table.querySelectorAll<HTMLElement>('.lab .role-text').forEach((el) => {
+      max = Math.max(max, el.scrollWidth + 74 + 30)
+    })
+    setLabelW(max)
+  }
+
   function quickAdd(oppId: string) {
     if (addPersonPick) {
       const p = roster.find((x) => x.id === addPersonPick)
@@ -201,16 +257,24 @@ export function GanttView() {
         <div className="empty">No opportunities yet — add your first pursuit.</div>
       ) : (
         <div className="gantt">
-          <table style={{ width: 240 + weeks.length * COL }}>
+          <table ref={tableRef} style={{ width: labelW + weeks.length * COL }}>
             <colgroup>
-              <col style={{ width: 240 }} />
+              <col ref={labelColRef} style={{ width: labelW }} />
               {weeks.map((w) => (
                 <col key={w} style={{ width: COL }} />
               ))}
             </colgroup>
             <thead>
               <tr>
-                <th className="lab">Project / role</th>
+                <th className="lab">
+                  Project / role
+                  <span
+                    className="col-resize"
+                    title="Drag to resize this column · double-click to fit the longest name"
+                    onPointerDown={onLabelResizeDown}
+                    onDoubleClick={autoFitLabel}
+                  />
+                </th>
                 {weeks.map((w, i) => (
                   <th key={w} className={`wk ${i === todayCol ? 'today' : ''}`}>
                     <span className="wknum">{isoWeekNum(w)}</span>
