@@ -51,6 +51,7 @@ interface Actions {
 
   // opportunities
   addOpportunity: (type?: ProjectType) => string
+  insertOpportunity: (opp: Omit<Opportunity, 'id' | 'updatedAt' | 'updatedBy'>) => string
   updateOpportunity: (id: string, patch: Partial<Opportunity>) => void
   removeOpportunity: (id: string) => void
   undoDelete: () => void
@@ -172,6 +173,18 @@ export const useStore = create<Store>()(
           updatedBy: get().editor,
         }
         set((s) => ({ opportunities: [...s.opportunities, opp], selectedOpportunityId: id, view: 'opportunities', dirty: true }))
+        return id
+      },
+      // Insert a fully-built opportunity (Excel import wizard) and jump to it.
+      insertOpportunity: (opp) => {
+        const id = uid('opp')
+        const full: Opportunity = { ...opp, id, updatedAt: nowIso(), updatedBy: get().editor }
+        set((s) => ({
+          opportunities: [...s.opportunities, full],
+          selectedOpportunityId: id,
+          view: 'opportunities',
+          dirty: true,
+        }))
         return id
       },
       updateOpportunity: (id, patch) => set((s) => mapOpp(s, id, (o) => ({ ...o, ...patch }))),

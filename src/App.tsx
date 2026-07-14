@@ -3,6 +3,9 @@ import { useStore } from './store/useStore'
 import type { View } from './store/useStore'
 import { exportCsv, exportJson, loadPublishedDataset, loadSeed, toBundle } from './lib/persistence'
 import { fsSupported, pickDirectory, readBundle, writeBundle } from './lib/fs'
+import { downloadTemplate, parseOpportunityWorkbook, type ImportDraft } from './lib/xlsxImport'
+import { ImportExcel } from './components/ImportExcel'
+import { Modal } from './components/Modal'
 import { Dashboard } from './components/Dashboard'
 import { OpportunitiesView } from './components/OpportunitiesView'
 import { UtilizationView } from './components/UtilizationView'
@@ -54,6 +57,7 @@ export default function App() {
   const setView = useStore((s) => s.setView)
   const opportunities = useStore((s) => s.opportunities)
   const roster = useStore((s) => s.roster)
+  const stages = useStore((s) => s.stages)
   const editor = useStore((s) => s.editor)
   const setEditor = useStore((s) => s.setEditor)
   const replaceAll = useStore((s) => s.replaceAll)
@@ -68,7 +72,9 @@ export default function App() {
   const clearUndo = useStore((s) => s.clearUndo)
 
   const fileInput = useRef<HTMLInputElement>(null)
+  const excelInput = useRef<HTMLInputElement>(null)
   const [busy, setBusy] = useState('')
+  const [excelDraft, setExcelDraft] = useState<{ draft: ImportDraft; fileName: string } | null>(null)
 
   // The Undo toast lingers 8 seconds, then the deletion becomes final.
   useEffect(() => {
@@ -177,6 +183,19 @@ export default function App() {
     if (label !== null) takeSnapshot(label)
   }
 
+  function onExcelFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    file
+      .arrayBuffer()
+      .then((buf) => {
+        const draft = parseOpportunityWorkbook(buf, stages, roster)
+        setExcelDraft({ draft, fileName: file.name })
+      })
+      .catch(() => alert(`Couldn't read "${file.name}" as a spreadsheet. Use the Excel template (Data → Download Excel template) or a .xlsx / .csv file.`))
+    e.target.value = ''
+  }
+
   // Dashboard overview first, then Opportunities (where you build the plan),
   // then the Utilization and Revenue read-outs, then Roster and Funnel.
   const tabs: { id: View; label: string; count?: number }[] = [
@@ -224,6 +243,8 @@ export default function App() {
 
           <DataMenu
             items={[
+              { label: 'Import from Excel…', onPick: () => excelInput.current?.click() },
+              { label: 'Download Excel template', onPick: () => downloadTemplate(stages, roster) },
               { label: 'Load published data', onPick: loadPublished, disabled: busy === 'load' },
               { label: 'Import JSON…', onPick: () => fileInput.current?.click() },
               { label: 'Export CSV', onPick: () => exportCsv(useStore.getState()) },
@@ -232,6 +253,7 @@ export default function App() {
           />
           <button className="btn primary sm" onClick={snapshot}>Snapshot</button>
           <input ref={fileInput} type="file" accept="application/json" hidden onChange={onImportFile} />
+          <input ref={excelInput} type="file" accept=".xlsx,.xls,.csv" hidden onChange={onExcelFile} />
           </div>
         </div>
 
@@ -258,6 +280,12 @@ export default function App() {
         {view === 'roster' && <RosterView />}
         {view === 'stages' && <StagesView />}
       </main>
+
+      {excelDraft && (
+        <Modal onClose={() => setExcelDraft(null)}>
+          <ImportExcel draft={excelDraft.draft} fileName={excelDraft.fileName} onClose={() => setExcelDraft(null)} />
+        </Modal>
+      )}
 
       {lastDeleted && (
         <div className="toast" role="status">
