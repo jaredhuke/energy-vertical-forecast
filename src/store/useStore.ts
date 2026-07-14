@@ -23,6 +23,7 @@ function nowIso(): string {
 interface UiState {
   view: View
   selectedOpportunityId: string | null
+  selectedPersonId: string | null // open person-detail modal (not persisted)
   utilizationTarget: number // target utilization (0..1), e.g. 0.8 = 80% billable
   ganttLabelWidth: number // px width of the pinned Project / role column
   dirHandle: unknown | null // File System Access handle (not persisted)
@@ -37,6 +38,7 @@ export const GANTT_LABEL_MAX = 520
 interface Actions {
   setView: (v: View) => void
   selectOpportunity: (id: string | null) => void
+  selectPerson: (id: string | null) => void
   setUtilizationTarget: (t: number) => void
   setGanttLabelWidth: (w: number) => void
   setEditor: (name: string) => void
@@ -102,6 +104,7 @@ export const useStore = create<Store>()(
 
       view: 'dashboard',
       selectedOpportunityId: null,
+      selectedPersonId: null,
       utilizationTarget: 0.8,
       ganttLabelWidth: 240,
       dirHandle: null,
@@ -112,6 +115,7 @@ export const useStore = create<Store>()(
       // ---- ui ----
       setView: (view) => set({ view }),
       selectOpportunity: (selectedOpportunityId) => set({ selectedOpportunityId, view: 'opportunities' }),
+      selectPerson: (selectedPersonId) => set({ selectedPersonId }),
       setUtilizationTarget: (t) => set({ utilizationTarget: Math.max(0.1, Math.min(1.2, t)) }),
       setGanttLabelWidth: (w) =>
         set({ ganttLabelWidth: Math.max(GANTT_LABEL_MIN, Math.min(GANTT_LABEL_MAX, Math.round(w))) }),

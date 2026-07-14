@@ -8,6 +8,7 @@ function RosterTable({ group }: { group: Group }) {
   const updatePerson = useStore((s) => s.updatePerson)
   const removePerson = useStore((s) => s.removePerson)
   const addPerson = useStore((s) => s.addPerson)
+  const selectPerson = useStore((s) => s.selectPerson)
   const people = roster.filter((p) => p.group === group)
 
   const set = (id: string, patch: Partial<Person>) => updatePerson(id, patch)
@@ -40,7 +41,10 @@ function RosterTable({ group }: { group: Group }) {
           <tbody>
             {people.map((p) => (
               <tr key={p.id}>
-                <td><input className="plain" style={{ width: '100%' }} value={p.name} onChange={(e) => set(p.id, { name: e.target.value })} /></td>
+                <td className="row" style={{ gap: 4 }}>
+                  <button className="mini-btn" title={`Open ${p.name}'s detail`} aria-label="Open detail" onClick={() => selectPerson(p.id)}>›</button>
+                  <input className="plain" style={{ width: '100%' }} value={p.name} onChange={(e) => set(p.id, { name: e.target.value })} />
+                </td>
                 <td>
                   <select value={p.level} onChange={(e) => set(p.id, { level: e.target.value })} style={{ width: '100%', background: 'transparent', borderColor: 'transparent' }}>
                     {LEVELS.map((l) => <option key={l} value={l}>{l}</option>)}

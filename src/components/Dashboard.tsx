@@ -11,12 +11,14 @@ import {
   personLoads,
   revenueTotals,
   rolesImpacted,
+  rosterUtilization,
   totals,
+  unstaffedRoles,
   weightedTotal,
 } from '../lib/analytics'
 import { stageName } from '../lib/funnel'
-import { weekLabel } from '../lib/weeks'
-import { fmtMoney, fmtPct } from '../lib/format'
+import { weekLabel, weeksThroughYear } from '../lib/weeks'
+import { fmtMoney, fmtMoneyFull, fmtPct } from '../lib/format'
 import { HBars, Sparkline, WeeklyDemandChart } from './charts'
 
 function Delta({ now, was, unit = '' }: { now: number; was: number | null; unit?: string }) {
@@ -38,11 +40,27 @@ export function Dashboard() {
   const stages = useStore((s) => s.stages)
   const roster = useStore((s) => s.roster)
   const snapshots = useStore((s) => s.snapshots)
+  const target = useStore((s) => s.utilizationTarget)
+  const setView = useStore((s) => s.setView)
+  const selectPerson = useStore((s) => s.selectPerson)
+  const selectOpportunity = useStore((s) => s.selectOpportunity)
 
   const state = useMemo<ForecastState>(
     () => ({ roster, stages, opportunities, snapshots, editor: '' }),
     [roster, stages, opportunities, snapshots],
   )
+
+  // Staffing signals (forward/expected utilization, next 12 months).
+  const utilWeeks = useMemo(() => weeksThroughYear(new Date().getFullYear() + 1), [])
+  const utilRows = useMemo(
+    () => rosterUtilization(state, utilWeeks, target, Math.min(52, utilWeeks.length)),
+    [state, utilWeeks, target],
+  )
+  const overUtil = utilRows.filter((r) => r.peakUtil > 1.02)
+  const underUtil = utilRows.filter((r) => r.idleWeeks < utilWeeks.length && r.avgUtil < target).sort((a, b) => a.avgUtil - b.avgUtil)
+  const idlePeople = utilRows.filter((r) => r.idleWeeks === utilWeeks.length)
+  const unstaffed = useMemo(() => unstaffedRoles(state), [state])
+  const targetPct = Math.round(target * 100)
 
   const { weeks } = useMemo(() => horizon(opportunities), [opportunities])
   const demand = useMemo(() => demandByWeek(state, weeks), [state, weeks])
@@ -108,23 +126,77 @@ export function Dashboard() {
       <div className="kpis">
         <div className="kpi">
           <div className="label">Weighted pull-through</div>
-          <div className="value num" style={{ color: 'var(--blue)' }}>{fmtMoney(rev.weighted)}</div>
+          <div className="value num" title={fmtMoneyFull(rev.weighted)} style={{ color: 'var(--blue)' }}>{fmtMoney(rev.weighted)}</div>
           <div className="delta flat">{rev.forecastCount} forecast deals</div>
         </div>
         <div className="kpi">
           <div className="label">Signed / booked</div>
-          <div className="value num" style={{ color: 'var(--good)' }}>{fmtMoney(rev.booked)}</div>
+          <div className="value num" title={fmtMoneyFull(rev.booked)} style={{ color: 'var(--good)' }}>{fmtMoney(rev.booked)}</div>
           <div className="delta flat">{rev.signedCount} signed</div>
         </div>
         <div className="kpi">
           <div className="label">Pipeline value</div>
-          <div className="value num">{fmtMoney(rev.tcv)}</div>
+          <div className="value num" title={fmtMoneyFull(rev.tcv)}>{fmtMoney(rev.tcv)}</div>
           <div className="delta flat">{opportunities.length} opportunities</div>
         </div>
         <div className="kpi">
           <div className="label">Blended value</div>
-          <div className="value num">{fmtMoney(rev.blended)}</div>
+          <div className="value num" title={fmtMoneyFull(rev.blended)}>{fmtMoney(rev.blended)}</div>
           <div className="delta flat">weighted + booked</div>
+        </div>
+      </div>
+
+      {/* Staffing signals — who needs work, who's overbooked, roles to fill */}
+      <div className="section-title" style={{ margin: '4px 0 0' }}>Staffing signals · next 12 months (forward utilization)</div>
+      <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 16 }}>
+        <div className="card">
+          <div className="h-row"><h2>Unstaffed roles <span className="faint" style={{ letterSpacing: 0, textTransform: 'none' }}>{unstaffed.length}</span></h2></div>
+          {unstaffed.length === 0 ? (
+            <div className="empty">Every planned role has a name.</div>
+          ) : (
+            <div className="signal-list">
+              {unstaffed.slice(0, 6).map((u, i) => (
+                <button key={i} className="signal-row" onClick={() => { selectOpportunity(u.oppId); setView('opportunities') }} title={`Open ${u.oppName}`}>
+                  <span className="row" style={{ gap: 6, minWidth: 0 }}><span className={`teamtag ${u.group}`}>{u.group === 'energy' ? 'Energy' : 'Delivery'}</span><span className="signal-name">{u.role}</span></span>
+                  <span className="faint num">{u.fteWeeks.toFixed(1)} FTE-weeks · {u.oppName.length > 16 ? u.oppName.slice(0, 15) + '…' : u.oppName}</span>
+                </button>
+              ))}
+              {unstaffed.length > 6 && <div className="faint" style={{ fontSize: 11, padding: '4px 2px' }}>+{unstaffed.length - 6} more</div>}
+            </div>
+          )}
+        </div>
+
+        <div className="card">
+          <div className="h-row"><h2>Over-allocated <span className="faint" style={{ letterSpacing: 0, textTransform: 'none', color: overUtil.length ? 'var(--warn)' : undefined }}>{overUtil.length}</span></h2></div>
+          {overUtil.length === 0 ? (
+            <div className="empty">Nobody is expected over capacity.</div>
+          ) : (
+            <div className="signal-list">
+              {overUtil.slice(0, 6).map((r) => (
+                <button key={r.person.id} className="signal-row" onClick={() => selectPerson(r.person.id)} title={`Open ${r.person.name}`}>
+                  <span className="signal-name">{r.person.name}</span>
+                  <span className="num" style={{ color: 'var(--warn)', fontWeight: 600 }}>{fmtPct(r.peakUtil)} peak · {r.overWeeks} wks</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="card">
+          <div className="h-row"><h2>Under-utilized <span className="faint" style={{ letterSpacing: 0, textTransform: 'none' }}>{underUtil.length}</span></h2></div>
+          {underUtil.length === 0 && idlePeople.length === 0 ? (
+            <div className="empty">Everyone is at or above target.</div>
+          ) : (
+            <div className="signal-list">
+              {underUtil.slice(0, 6).map((r) => (
+                <button key={r.person.id} className="signal-row" onClick={() => selectPerson(r.person.id)} title={`Open ${r.person.name}`}>
+                  <span className="signal-name">{r.person.name}{r.idleWeeks === utilWeeks.length ? <span className="faint"> · idle</span> : null}</span>
+                  <span className="num" style={{ color: 'var(--blue)' }}>{fmtPct(r.avgUtil)} avg <span className="faint">/ {targetPct}%</span></span>
+                </button>
+              ))}
+              {underUtil.length > 6 && <div className="faint" style={{ fontSize: 11, padding: '4px 2px' }}>+{underUtil.length - 6} more below {targetPct}%</div>}
+            </div>
+          )}
         </div>
       </div>
 

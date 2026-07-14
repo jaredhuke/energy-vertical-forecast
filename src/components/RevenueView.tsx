@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 import { useStore } from '../store/useStore'
 import type { ForecastState } from '../types'
 import { energyUtilization, horizon, revenueByEnergyRole, revenueTotals } from '../lib/analytics'
-import { fmtMoney } from '../lib/format'
+import { fmtMoney, fmtMoneyFull } from '../lib/format'
 
 export function RevenueView() {
   const roster = useStore((s) => s.roster)
@@ -32,10 +32,10 @@ export function RevenueView() {
       </div>
 
       <div className="kpis">
-        <div className="kpi"><div className="label">Pipeline value</div><div className="value num">{fmtMoney(t.tcv)}</div><div className="delta flat">{t.forecastCount + t.signedCount} deals</div></div>
-        <div className="kpi"><div className="label">Weighted pull-through</div><div className="value num" style={{ color: 'var(--blue)' }}>{fmtMoney(t.weighted)}</div><div className="delta flat">{t.forecastCount} forecast</div></div>
-        <div className="kpi"><div className="label">Signed / booked</div><div className="value num" style={{ color: 'var(--good)' }}>{fmtMoney(t.booked)}</div><div className="delta flat">{t.signedCount} signed</div></div>
-        <div className="kpi"><div className="label">Blended value</div><div className="value num">{fmtMoney(t.blended)}</div><div className="delta flat">weighted + booked</div></div>
+        <div className="kpi"><div className="label">Pipeline value</div><div className="value num" title={fmtMoneyFull(t.tcv)}>{fmtMoney(t.tcv)}</div><div className="delta flat">{t.forecastCount + t.signedCount} deals</div></div>
+        <div className="kpi"><div className="label">Weighted pull-through</div><div className="value num" title={fmtMoneyFull(t.weighted)} style={{ color: 'var(--blue)' }}>{fmtMoney(t.weighted)}</div><div className="delta flat">{t.forecastCount} forecast</div></div>
+        <div className="kpi"><div className="label">Signed / booked</div><div className="value num" title={fmtMoneyFull(t.booked)} style={{ color: 'var(--good)' }}>{fmtMoney(t.booked)}</div><div className="delta flat">{t.signedCount} signed</div></div>
+        <div className="kpi"><div className="label">Blended value</div><div className="value num" title={fmtMoneyFull(t.blended)}>{fmtMoney(t.blended)}</div><div className="delta flat">weighted + booked</div></div>
       </div>
 
       <div className="card">
@@ -58,14 +58,14 @@ export function RevenueView() {
                     <td style={{ fontWeight: 550 }}>{r.role}</td>
                     <td className="num faint">{r.people}</td>
                     <td className="num faint">{r.deals}</td>
-                    <td className="num" style={{ color: 'var(--blue)' }}>{fmtMoney(r.weighted)}</td>
-                    <td className="num" style={{ color: r.booked ? 'var(--good)' : 'var(--text-faint)' }}>{fmtMoney(r.booked)}</td>
+                    <td className="num" style={{ color: 'var(--blue)' }}>{fmtMoneyFull(r.weighted)}</td>
+                    <td className="num" style={{ color: r.booked ? 'var(--good)' : 'var(--text-faint)' }}>{fmtMoneyFull(r.booked)}</td>
                     <td>
                       <div className="row" style={{ gap: 8 }}>
                         <div className="bar-track" style={{ flex: 1 }}>
                           <div style={{ width: `${(total / roleMax) * 100}%`, height: '100%', background: 'var(--grad)' }} />
                         </div>
-                        <span className="num" style={{ width: 56, textAlign: 'right' }}>{fmtMoney(total)}</span>
+                        <span className="num" style={{ width: 92, textAlign: 'right' }}>{fmtMoneyFull(total)}</span>
                       </div>
                     </td>
                   </tr>
@@ -94,9 +94,9 @@ export function RevenueView() {
                   <td style={{ fontWeight: 550 }}>{u.person.name}<span className="faint" style={{ marginLeft: 6, fontSize: 11 }}>{u.person.level}</span></td>
                   <td className="faint">{u.person.role}</td>
                   <td className="num faint">{u.deals}</td>
-                  <td className="num" style={{ color: 'var(--blue)' }}>{fmtMoney(u.weighted)}</td>
-                  <td className="num" style={{ color: u.booked ? 'var(--good)' : 'var(--text-faint)' }}>{fmtMoney(u.booked)}</td>
-                  <td className="num" style={{ fontWeight: 600 }}>{fmtMoney(u.weighted + u.booked)}</td>
+                  <td className="num" style={{ color: 'var(--blue)' }}>{fmtMoneyFull(u.weighted)}</td>
+                  <td className="num" style={{ color: u.booked ? 'var(--good)' : 'var(--text-faint)' }}>{fmtMoneyFull(u.booked)}</td>
+                  <td className="num" style={{ fontWeight: 600 }}>{fmtMoneyFull(u.weighted + u.booked)}</td>
                 </tr>
               ))}
             </tbody>

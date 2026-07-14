@@ -35,6 +35,7 @@ export function UtilizationView() {
   const opportunities = useStore((s) => s.opportunities)
   const snapshots = useStore((s) => s.snapshots)
   const setView = useStore((s) => s.setView)
+  const selectPerson = useStore((s) => s.selectPerson)
   const target = useStore((s) => s.utilizationTarget)
   const setTarget = useStore((s) => s.setUtilizationTarget)
 
@@ -122,9 +123,10 @@ export function UtilizationView() {
     <div className="grid" style={{ gap: 16 }}>
       <div className="hint">
         Utilization is the <b>people × projects</b> view — the transpose of the Opportunities timeline (edit FTE there;
-        this reads from the same data, internal projects included). Bands are set against your <b>utilization target</b>:
-        below target = under-utilized (blue), target→capacity = on target (green), over capacity = over-allocated (red).
-        Colour strength = booking certainty (funnel close %; signed & internal = 100%).
+        this reads from the same data, internal projects included). Each cell is <b>forward (expected) utilization</b> =
+        FTE × close % ÷ capacity, so 1&nbsp;FTE on a 50%-likely deal reads 50%; signed &amp; internal count at 100%.
+        Bands vs your <b>utilization target</b>: below target = under-utilized (blue), target→capacity = on target (green),
+        over capacity = over-allocated (red). Colour strength = booking certainty. Click a name for that person's detail.
       </div>
 
       <div className="card" ref={cardRef}>
@@ -186,7 +188,7 @@ export function UtilizationView() {
                     <tr key={r.person.id}>
                       <td className={`ru-lab team-${r.person.group}`}>
                         <div className="ru-name">
-                          {r.person.name}
+                          <button className="linklike" style={{ color: 'var(--blue)', fontWeight: 600 }} title={`Open ${r.person.name}'s detail`} onClick={() => selectPerson(r.person.id)}>{r.person.name}</button>
                           <span className="faint"> {r.person.role} · {r.person.level} · capacity {r.person.capacity.toFixed(1)}</span>
                         </div>
                         <div className="ru-stats">
@@ -199,7 +201,7 @@ export function UtilizationView() {
                       {cols.map((c, i) => {
                         const cell = c.cell(r)
                         return (
-                          <td key={i} className={`ru-cell${c.yearStart ? ' ys' : ''}`} style={cellStyle(cell, target)} title={cell.committed ? `${c.title}: ${Math.round(cell.util * 100)}%${cell.util > 1.02 ? ' — OVER CAPACITY' : ''} (target ${targetPct}%) · ${cell.committed.toFixed(2)} FTE · ${Math.round(cell.certainty * 100)}% certain` : `${c.title}: idle`}>
+                          <td key={i} className={`ru-cell${c.yearStart ? ' ys' : ''}`} style={cellStyle(cell, target)} title={cell.committed ? `${c.title}: ${Math.round(cell.util * 100)}% forward utilization${cell.util > 1.02 ? ' — OVER CAPACITY' : ''} (target ${targetPct}%) · ${cell.committed.toFixed(2)} FTE booked at ${Math.round(cell.certainty * 100)}% likely` : `${c.title}: idle`}>
                             {/* over-capacity is marked by "!" + bold, not colour alone */}
                             {cell.committed > 0 ? <span className={cell.util > 1.02 ? 'ru-over-num' : ''}>{Math.round(cell.util * 100)}{cell.util > 1.02 ? '!' : ''}</span> : null}
                           </td>

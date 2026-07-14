@@ -1,4 +1,4 @@
-import type { ForecastState, Opportunity, Person } from '../types'
+import type { ForecastState, Group, Opportunity, Person } from '../types'
 import { effectiveProbability } from './funnel'
 import { addWeeks, parseKey, weekKeyOf, weeksBetween, weekRange } from './weeks'
 
@@ -187,7 +187,9 @@ export function personLoads(state: ForecastState, weeks: string[]): PersonLoad[]
   for (const load of byId.values()) {
     for (const [week, cell] of Object.entries(load.byWeek)) {
       if (cell.committed > load.peakCommitted) load.peakCommitted = cell.committed
-      if (cell.committed > load.person.capacity + 1e-9) load.overWeeks.push(week)
+      // Over-allocated = EXPECTED (weighted) load exceeds capacity, consistent
+      // with forward utilization. Raw committed stays available per cell.
+      if (cell.weighted > load.person.capacity + 1e-9) load.overWeeks.push(week)
     }
     load.overWeeks.sort()
   }
@@ -213,6 +215,29 @@ export function rolesImpacted(
     }
   }
   return [...map.values()].sort((a, b) => b.weighted - a.weighted)
+}
+
+export interface UnstaffedRole {
+  oppId: string
+  oppName: string
+  role: string
+  group: Group
+  fteWeeks: number // planned FTE-weeks with no named person yet
+}
+
+/** Role lines that carry planned FTE but have no named person assigned —
+ *  demand you still need to staff. */
+export function unstaffedRoles(state: ForecastState): UnstaffedRole[] {
+  const out: UnstaffedRole[] = []
+  for (const o of state.opportunities) {
+    for (const a of o.assignments) {
+      if (a.personId) continue
+      let fteWeeks = 0
+      for (let off = 0; off < o.durationWeeks; off++) fteWeeks += a.fte[String(off)] || 0
+      if (fteWeeks > 0) out.push({ oppId: o.id, oppName: o.name, role: a.role, group: a.group, fteWeeks })
+    }
+  }
+  return out.sort((a, b) => b.fteWeeks - a.fteWeeks)
 }
 
 export function funnelCounts(state: ForecastState): { stageId: string; count: number }[] {
@@ -300,13 +325,13 @@ export function revenueByEnergyRole(state: ForecastState): RoleRevenue[] {
 
 export interface PersonUtilization {
   person: Person
-  weekly: number[] // committed FTE aligned to `weeks`
+  weekly: number[] // expected (probability-weighted) FTE aligned to `weeks`
   cap: number
   peak: number
   avg: number // over active weeks
-  peakPct: number
-  avgPct: number
-  overWeeks: number
+  peakPct: number // peak EXPECTED utilization
+  avgPct: number // average EXPECTED utilization over active weeks
+  overWeeks: number // weeks expected-over capacity
   weighted: number // influenced weighted pipeline $
   booked: number // influenced booked $
   deals: number
@@ -318,7 +343,8 @@ export function energyUtilization(state: ForecastState, weeks: string[]): Person
   const out: PersonUtilization[] = []
   for (const p of state.roster.filter((x) => x.group === 'energy')) {
     const load = loads.get(p.id)
-    const weekly = weeks.map((w) => load?.byWeek[w]?.committed || 0)
+    // Forward/expected utilization: probability-weighted FTE (matches the heatmap).
+    const weekly = weeks.map((w) => load?.byWeek[w]?.weighted || 0)
     const cap = p.capacity || 1
     const active = weekly.filter((v) => v > 0)
     const peak = weekly.reduce((m, v) => Math.max(m, v), 0)
@@ -362,19 +388,19 @@ function oppCertainty(state: ForecastState, o: Opportunity): number {
 }
 
 export interface RosterWeekCell {
-  util: number // committed FTE / capacity (1 = fully booked)
-  committed: number // FTE this week
-  certainty: number // FTE-weighted close % of this week's bookings (0..1)
+  util: number // FORWARD/expected utilization = Σ(FTE × close %) ÷ capacity
+  committed: number // raw FTE booked this week (certain + speculative), for the tooltip
+  certainty: number // FTE-weighted close % of this week's bookings (0..1) → opacity
 }
 
 export interface RosterUtilRow {
   person: Person
   weekly: RosterWeekCell[]
-  avgUtil: number // mean utilization across the stats window (idle weeks included)
-  overWeeks: number // weeks over capacity (stats window)
-  underWeeks: number // weeks booked but under capacity (stats window)
+  avgUtil: number // mean EXPECTED utilization across the stats window (idle weeks included)
+  overWeeks: number // weeks expected-over capacity (stats window)
+  underWeeks: number // weeks booked but expected-under capacity (stats window)
   idleWeeks: number // weeks with zero booking (stats window)
-  peakUtil: number
+  peakUtil: number // peak EXPECTED utilization
 }
 
 const OVER_CAP = 1.02 // above capacity → over-allocated (unsustainable)
@@ -422,8 +448,10 @@ export function rosterUtilization(
     const c = committed.get(p.id) ?? new Array(weeks.length).fill(0)
     const w = weighted.get(p.id) ?? new Array(weeks.length).fill(0)
     const weekly: RosterWeekCell[] = weeks.map((_, i) => ({
-      util: c[i] / cap,
-      committed: c[i],
+      // Forward/expected utilization: FTE weighted by close % (signed & internal
+      // count at 100%). 1 FTE on a 50%-likely deal → 0.5 expected → 50% util.
+      util: w[i] / cap,
+      committed: c[i], // raw booked FTE (if everything lands), for the tooltip
       certainty: c[i] > 0 ? w[i] / c[i] : 0,
     }))
     // Summary numbers over the stats window only (the grid may extend years further).

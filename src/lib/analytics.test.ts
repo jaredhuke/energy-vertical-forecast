@@ -12,6 +12,7 @@ import {
   personLoads,
   rolesImpacted,
   funnelCounts,
+  unstaffedRoles,
   oppWeightedRevenue,
   oppBookedRevenue,
   revenueTotals,
@@ -168,9 +169,9 @@ describe('personLoads — over-capacity flagging', () => {
     expect(byId['p-alice'].peakCommitted).toBeCloseTo(1.0, 10)
     expect(byId['p-alice'].overWeeks).toEqual([])
   })
-  it('Bob (cap 0.5) is over exactly in W1 (0.6), not in W0 (0.5 == cap)', () => {
-    expect(byId['p-bob'].peakCommitted).toBeCloseTo(0.6, 10)
-    expect(byId['p-bob'].overWeeks).toEqual(['2026-01-12'])
+  it('Bob peaks at 0.6 raw, but is NOT expected-over (0.6 FTE @ 50% = 0.3 < 0.5 cap)', () => {
+    expect(byId['p-bob'].peakCommitted).toBeCloseTo(0.6, 10) // raw booking peak
+    expect(byId['p-bob'].overWeeks).toEqual([]) // over-capacity is EXPECTED (weighted) now
   })
 })
 
@@ -206,20 +207,21 @@ describe('revenue — pull-through math', () => {
   })
 })
 
-describe('energyUtilization — per energy person', () => {
+describe('energyUtilization — per energy person (EXPECTED / weighted)', () => {
   const u = Object.fromEntries(energyUtilization(state, WEEKS).map((x) => [x.person.id, x]))
-  it('Alice: weekly [0.5,1.0,0.5,0], peak 100%, avg over active 66.7%', () => {
-    expect(u['p-alice'].weekly).toEqual([0.5, 1.0, 0.5, 0])
-    expect(u['p-alice'].peakPct).toBeCloseTo(1.0, 10)
-    expect(u['p-alice'].avgPct).toBeCloseTo(2 / 3, 10) // (0.5+1.0+0.5)/3 / 1.0
+  it('Alice: expected weekly [0.5,0.75,0.25,0], peak 75%, avg over active 50%', () => {
+    expect(u['p-alice'].weekly).toEqual([0.5, 0.75, 0.25, 0]) // W1: 0.5 signed + 0.5×50%
+    expect(u['p-alice'].peakPct).toBeCloseTo(0.75, 10)
+    expect(u['p-alice'].avgPct).toBeCloseTo(0.5, 10) // (0.5+0.75+0.25)/3
     expect(u['p-alice'].deals).toBe(2)
     expect(u['p-alice'].weighted).toBe(1_000_000)
     expect(u['p-alice'].booked).toBe(1_000_000)
   })
-  it('Bob (cap 0.5): peak 120%, over in 1 week, influenced weighted 1.0M', () => {
-    expect(u['p-bob'].peakPct).toBeCloseTo(1.2, 10) // 0.6 / 0.5
-    expect(u['p-bob'].overWeeks).toBe(1)
-    expect(u['p-bob'].weighted).toBe(1_000_000) // O2
+  it('Bob (cap 0.5): expected peak 100% (0.5 internal / 0.5 cap), NOT over', () => {
+    expect(u['p-bob'].weekly).toEqual([0.5, 0.3, 0, 0]) // W0 internal ×1, W1 0.6×50%
+    expect(u['p-bob'].peakPct).toBeCloseTo(1.0, 10) // 0.5 / 0.5
+    expect(u['p-bob'].overWeeks).toBe(0) // expected never exceeds capacity
+    expect(u['p-bob'].weighted).toBe(1_000_000) // O2 influence
     expect(u['p-bob'].booked).toBe(0)
   })
   it('delivery people are excluded from energy utilization', () => {
@@ -227,20 +229,20 @@ describe('energyUtilization — per energy person', () => {
   })
 })
 
-describe('rosterUtilization — the heatmap numbers', () => {
+describe('rosterUtilization — the heatmap numbers (EXPECTED / weighted)', () => {
   const rows = Object.fromEntries(rosterUtilization(state, WEEKS, 0.8).map((r) => [r.person.id, r]))
-  it('Alice util [0.5,1.0,0.5,0], avg 50%, 2 under-target weeks, 1 idle, 0 over', () => {
-    expect(rows['p-alice'].weekly.map((c) => c.util)).toEqual([0.5, 1.0, 0.5, 0])
-    expect(rows['p-alice'].avgUtil).toBeCloseTo(0.5, 10) // (0.5+1+0.5+0)/4
-    expect(rows['p-alice'].underWeeks).toBe(2)
+  it('Alice expected util [0.5,0.75,0.25,0], avg 37.5%, 3 under-target, 1 idle, 0 over', () => {
+    expect(rows['p-alice'].weekly.map((c) => c.util)).toEqual([0.5, 0.75, 0.25, 0])
+    expect(rows['p-alice'].avgUtil).toBeCloseTo(0.375, 10) // (0.5+0.75+0.25+0)/4
+    expect(rows['p-alice'].underWeeks).toBe(3) // all three active weeks are < 80%
     expect(rows['p-alice'].idleWeeks).toBe(1)
     expect(rows['p-alice'].overWeeks).toBe(0)
-    expect(rows['p-alice'].peakUtil).toBeCloseTo(1.0, 10)
+    expect(rows['p-alice'].peakUtil).toBeCloseTo(0.75, 10)
   })
-  it('Bob util [1.0,1.2,0,0], over in 1 week (1.2 > 1.02), avg 55%', () => {
-    expect(rows['p-bob'].weekly.map((c) => c.util)).toEqual([1.0, 1.2, 0, 0])
-    expect(rows['p-bob'].overWeeks).toBe(1)
-    expect(rows['p-bob'].avgUtil).toBeCloseTo(0.55, 10)
+  it('Bob expected util [1.0,0.6,0,0] — 0.6 FTE @ 50% = 60%, NOT over, avg 40%', () => {
+    expect(rows['p-bob'].weekly.map((c) => c.util)).toEqual([1.0, 0.6, 0, 0])
+    expect(rows['p-bob'].overWeeks).toBe(0) // 0.6 raw → 0.3 expected < 0.5 cap
+    expect(rows['p-bob'].avgUtil).toBeCloseTo(0.4, 10) // (1.0+0.6)/4
   })
   it('certainty = FTE-weighted close % of the week (signed/internal = 100%)', () => {
     // Alice W1: 0.5 signed(×1) + 0.5 forecast(×0.5) = 0.75 weighted over 1.0 committed
@@ -249,6 +251,34 @@ describe('rosterUtilization — the heatmap numbers', () => {
     expect(rows['p-bob'].weekly[1].certainty).toBeCloseTo(0.5, 10)
     // Bob W0: 0.5 internal → 100% certain
     expect(rows['p-bob'].weekly[0].certainty).toBeCloseTo(1.0, 10)
+  })
+  it('THE RULE: 1 FTE on a 50%-likely deal = 50% forward utilization', () => {
+    const st: ForecastState = {
+      ...state,
+      roster: [{ ...roster[0], id: 'p-x', capacity: 1 }],
+      opportunities: [{
+        id: 'ox', name: '', client: '', type: 'external', booking: 'forecast', stageId: 'proposal',
+        dealValue: 0, startWeek: '2026-01-05', durationWeeks: 1,
+        assignments: [{ id: 'x', personId: 'p-x', role: 'X', group: 'energy', fte: { '0': 1 } }],
+      }],
+    }
+    const cell = rosterUtilization(st, WEEKS, 0.8)[0].weekly[0]
+    expect(cell.util).toBeCloseTo(0.5, 10) // 1 FTE × 50% ÷ 1.0 cap
+    expect(cell.committed).toBeCloseTo(1.0, 10) // raw FTE still available for the tooltip
+  })
+  it('a signed 1.5 FTE on cap 1.0 is expected-over (150%)', () => {
+    const st: ForecastState = {
+      ...state,
+      roster: [{ ...roster[0], id: 'p-y', capacity: 1 }],
+      opportunities: [{
+        id: 'oy', name: '', client: '', type: 'external', booking: 'signed', stageId: 'closed',
+        dealValue: 0, startWeek: '2026-01-05', durationWeeks: 1,
+        assignments: [{ id: 'y', personId: 'p-y', role: 'X', group: 'energy', fte: { '0': 1.5 } }],
+      }],
+    }
+    const row = rosterUtilization(st, WEEKS, 0.8)[0]
+    expect(row.weekly[0].util).toBeCloseTo(1.5, 10) // signed → 100% certain → 1.5 expected
+    expect(row.overWeeks).toBe(1)
   })
   it('divide-by-zero guard: capacity 0 does not produce NaN/Infinity util', () => {
     const zeroCap: Person = { ...roster[0], id: 'p-zero', name: 'Zero', capacity: 0 }
@@ -260,6 +290,26 @@ describe('rosterUtilization — the heatmap numbers', () => {
     const r = rosterUtilization(st, WEEKS, 0.8)[0]
     expect(Number.isFinite(r.weekly[0].util)).toBe(true)
     expect(Number.isFinite(r.avgUtil)).toBe(true)
+  })
+})
+
+describe('unstaffedRoles', () => {
+  it('lists role lines with planned FTE and no named person (excludes staffed + zero-FTE)', () => {
+    const st: ForecastState = {
+      ...state,
+      opportunities: [{
+        ...opportunities[0], id: 'ou',
+        assignments: [
+          { id: 'r1', role: 'Data Scientist', group: 'delivery', fte: { '0': 0.6, '1': 0.6 } }, // unstaffed, 1.2
+          { id: 'r2', personId: 'p-alice', role: 'SA', group: 'energy', fte: { '0': 0.5 } }, // staffed → excluded
+          { id: 'r3', role: 'Placeholder', group: 'delivery', fte: {} }, // no FTE → excluded
+        ],
+      }],
+    }
+    const u = unstaffedRoles(st)
+    expect(u).toHaveLength(1)
+    expect(u[0].role).toBe('Data Scientist')
+    expect(u[0].fteWeeks).toBeCloseTo(1.2, 10)
   })
 })
 

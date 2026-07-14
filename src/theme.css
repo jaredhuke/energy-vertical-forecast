@@ -268,6 +268,21 @@ a { color: var(--blue); }
 .mini-btn { width: 18px; height: 18px; flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center;
   border: 1px solid var(--border); background: #fff; color: var(--text-dim); border-radius: 4px; cursor: pointer; font-size: 13px; line-height: 1; padding: 0; }
 .mini-btn:hover { color: var(--text); border-color: var(--border-strong); background: var(--surface-2); }
+/* dashboard staffing-signal lists */
+.signal-list { display: flex; flex-direction: column; gap: 2px; }
+.signal-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  width: 100%; background: none; border: none; cursor: pointer; text-align: left;
+  padding: 6px 8px; border-radius: var(--r-sm); font-size: 12.5px; color: var(--text);
+}
+.signal-row:hover { background: var(--surface-2); }
+.signal-name { font-weight: 550; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.signal-row .num { flex: 0 0 auto; font-size: 11.5px; }
+
+/* calendar pan control (Gantt header) */
+.pan { display: inline-flex; align-items: center; gap: 3px; }
+.pan .mini-btn { width: 24px; height: 24px; font-size: 14px; }
+.pan .mini-btn.now { width: auto; padding: 0 9px; font-size: 11px; font-weight: 600; }
 .caret-btn { width: 16px; height: 18px; flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center; border: none; background: none; cursor: pointer; padding: 0; }
 .caret { width: 0; height: 0; border-left: 5px solid var(--text-faint); border-top: 4px solid transparent; border-bottom: 4px solid transparent; transition: transform 0.12s ease; }
 .caret-btn.open .caret { transform: rotate(90deg); }

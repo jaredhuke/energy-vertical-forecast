@@ -3,7 +3,7 @@ import { useStore } from '../store/useStore'
 import type { Opportunity } from '../types'
 import { effectiveProbability } from '../lib/funnel'
 import { isoWeekNum, weekLabel } from '../lib/weeks'
-import { fmtMoney } from '../lib/format'
+import { fmtMoneyFull } from '../lib/format'
 
 /** Compact detail panel for the selected project: meta, slide, duration,
  *  add-roles, duplicate/delete. Weekly FTE itself is edited in the Gantt. */
@@ -125,7 +125,7 @@ export function OpportunityMeta({ opp, onClose }: { opp: Opportunity; onClose?: 
         {!internal && (
           <>
             <label className="field" style={{ flex: '0 1 170px' }} title="Total contract value in dollars">
-              <span style={{ whiteSpace: 'nowrap' }}>Deal value ($) <span className="faint num">{dealValue > 0 ? `= ${fmtMoney(dealValue)}` : ''}</span></span>
+              <span style={{ whiteSpace: 'nowrap' }}>Deal value ($) <span className="faint num">{dealValue > 0 ? `= ${fmtMoneyFull(dealValue)}` : ''}</span></span>
               <input
                 type="number" min={0} step={50000}
                 value={opp.dealValue ?? 0}
@@ -148,9 +148,9 @@ export function OpportunityMeta({ opp, onClose }: { opp: Opportunity; onClose?: 
         {internal ? (
           <>Internal project — consumes capacity (counts in <b>utilization at 100% certainty</b>); no funnel stage, deal value, or revenue.</>
         ) : opp.booking === 'signed' ? (
-          <>Booked revenue <b>{fmtMoney(dealValue)}</b> — signed, counts as actual bookings.</>
+          <>Booked revenue <b>{fmtMoneyFull(dealValue)}</b> — signed, counts as actual bookings.</>
         ) : (
-          <>Pull-through <b>{fmtMoney(dealValue * prob)}</b> = {fmtMoney(dealValue)} deal × {Math.round(prob * 100)}% close</>
+          <>Pull-through <b>{fmtMoneyFull(Math.round(dealValue * prob))}</b> = {fmtMoneyFull(dealValue)} deal × {Math.round(prob * 100)}% close</>
         )}
       </div>
 

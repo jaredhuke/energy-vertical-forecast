@@ -1,8 +1,8 @@
-import { Fragment, useMemo, useRef, useState } from 'react'
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import { GANTT_LABEL_MAX, GANTT_LABEL_MIN, useStore } from '../store/useStore'
 import type { ForecastState, Opportunity } from '../types'
 import { effectiveProbability, stageName } from '../lib/funnel'
-import { personLoads } from '../lib/analytics'
+import { oppStartMonday, personLoads } from '../lib/analytics'
 import { addWeeks, isoWeekNum, weekKeyOf, weekLabel, weekRange, weeksBetween } from '../lib/weeks'
 import { fmtMoney } from '../lib/format'
 
@@ -36,6 +36,7 @@ export function GanttView() {
 
   const tableRef = useRef<HTMLTableElement>(null)
   const labelColRef = useRef<HTMLTableColElement>(null)
+  const scrollRef = useRef<HTMLDivElement>(null) // the horizontally-scrolling timeline
 
   const [draggingId, setDraggingId] = useState<string | null>(null)
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
@@ -52,15 +53,33 @@ export function GanttView() {
       return next
     })
 
-  // Fixed axis start (4 weeks before today) so sliding never shifts the grid.
-  const start = addWeeks(weekKeyOf(), -4)
-  let end = addWeeks(weekKeyOf(), 18)
+  // Fixed axis start (8 weeks before today) so sliding a bar never shifts the
+  // grid; the window shows recent past → future and pans horizontally.
+  const start = addWeeks(weekKeyOf(), -8)
+  let end = addWeeks(weekKeyOf(), 20)
   for (const o of opportunities) {
-    const oEnd = addWeeks(o.startWeek, o.durationWeeks)
+    const oEnd = addWeeks(oppStartMonday(o), o.durationWeeks)
     if (weeksBetween(end, oEnd) > 0) end = oEnd
   }
   const weeks = weekRange(start, weeksBetween(start, end) + 3)
   const todayCol = weeksBetween(start, weekKeyOf())
+
+  // Calendar pan: scroll the timeline left/right; "Now" re-centres on today.
+  // Direct scrollLeft (not scrollBy{smooth}, which no-ops in some browsers);
+  // the .gantt CSS scroll-behavior adds the smooth animation where supported.
+  const panBy = (cols: number) => {
+    const el = scrollRef.current
+    if (el) el.scrollLeft = Math.max(0, el.scrollLeft + cols * COL)
+  }
+  const scrollToToday = () => {
+    const el = scrollRef.current
+    if (el) el.scrollLeft = Math.max(0, (todayCol - 2) * COL)
+  }
+  // Land the initial view on "now" (not 8 weeks of past) once, on mount.
+  useEffect(() => {
+    scrollToToday()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // Cross-project load per named person per week, so a cell that pushes
   // someone over capacity warns right where you're typing.
@@ -237,6 +256,11 @@ export function GanttView() {
             <span><span className="swatch energy" /> Energy team</span>
             <span><span className="swatch delivery" /> Delivery team</span>
           </span>
+          <div className="pan" role="group" aria-label="Slide the calendar">
+            <button className="mini-btn" title="Slide 4 weeks earlier" aria-label="Slide earlier" onClick={() => panBy(-4)}>‹</button>
+            <button className="mini-btn now" title="Jump to today" onClick={() => scrollToToday()}>Now</button>
+            <button className="mini-btn" title="Slide 4 weeks later" aria-label="Slide later" onClick={() => panBy(4)}>›</button>
+          </div>
           <button
             className={`btn sm ${editMode ? 'primary' : 'ghost'}`}
             onClick={() => setEditMode((v) => !v)}
@@ -256,7 +280,7 @@ export function GanttView() {
       {opportunities.length === 0 ? (
         <div className="empty">No opportunities yet — add your first pursuit.</div>
       ) : (
-        <div className="gantt">
+        <div className="gantt" ref={scrollRef}>
           <table ref={tableRef} style={{ width: labelW + weeks.length * COL }}>
             <colgroup>
               <col ref={labelColRef} style={{ width: labelW }} />
@@ -378,16 +402,18 @@ export function GanttView() {
                               const inSpan = off >= 0 && off < opp.durationWeeks
                               if (!inSpan) return <td key={w} className={`cell out ${i === todayCol ? 'today' : ''}`} />
                               const v = a.fte[String(off)] || 0
-                              // Warn in-place when this person's TOTAL load (all
-                              // projects) exceeds their capacity this week.
+                              // Warn in-place when this person's EXPECTED (close-%
+                              // weighted) load across all projects exceeds capacity
+                              // this week — consistent with forward utilization.
                               const load = person ? loadByPerson.get(person.id) : undefined
-                              const wkTotal = load?.byWeek[w]?.committed ?? 0
-                              const over = !!person && v > 0 && wkTotal > person.capacity + 1e-9
+                              const wkExpected = load?.byWeek[w]?.weighted ?? 0
+                              const wkCommitted = load?.byWeek[w]?.committed ?? 0
+                              const over = !!person && v > 0 && wkExpected > person.capacity + 1e-9
                               return (
                                 <td
                                   key={w}
                                   className={`cell ${v ? a.group : ''} ${over ? 'overcap' : ''} ${i === todayCol ? 'today' : ''}`}
-                                  title={over ? `Over capacity: ${person!.name} is committed ${wkTotal.toFixed(2)} FTE of ${person!.capacity.toFixed(1)} across all projects in ${weekLabel(w)}` : undefined}
+                                  title={over ? `Over capacity in ${weekLabel(w)}: ${person!.name} is expected at ${wkExpected.toFixed(2)} FTE of ${person!.capacity.toFixed(1)} across all projects (${wkCommitted.toFixed(2)} booked if every deal lands)` : undefined}
                                 >
                                   <input className="num" type="number" min={0} step={0.25} value={v || ''} placeholder="·"
                                     aria-label={`${person ? person.name : a.role}, ${weekLabel(w)} FTE`}

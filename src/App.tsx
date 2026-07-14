@@ -12,6 +12,7 @@ import { UtilizationView } from './components/UtilizationView'
 import { RevenueView } from './components/RevenueView'
 import { RosterView } from './components/RosterView'
 import { StagesView } from './components/StagesView'
+import { PersonDetail } from './components/PersonDetail'
 
 /** Compact dropdown for the data actions so the header stays ONE row of
  *  uniform-height controls at any window width (zero double-height buttons,
@@ -70,6 +71,9 @@ export default function App() {
   const lastDeleted = useStore((s) => s.lastDeleted)
   const undoDelete = useStore((s) => s.undoDelete)
   const clearUndo = useStore((s) => s.clearUndo)
+  const selectedPersonId = useStore((s) => s.selectedPersonId)
+  const selectPerson = useStore((s) => s.selectPerson)
+  const selectedPerson = roster.find((p) => p.id === selectedPersonId) || null
 
   const fileInput = useRef<HTMLInputElement>(null)
   const excelInput = useRef<HTMLInputElement>(null)
@@ -284,6 +288,12 @@ export default function App() {
       {excelDraft && (
         <Modal onClose={() => setExcelDraft(null)}>
           <ImportExcel draft={excelDraft.draft} fileName={excelDraft.fileName} onClose={() => setExcelDraft(null)} />
+        </Modal>
+      )}
+
+      {selectedPerson && (
+        <Modal onClose={() => selectPerson(null)}>
+          <PersonDetail key={selectedPerson.id} person={selectedPerson} onClose={() => selectPerson(null)} />
         </Modal>
       )}
 
