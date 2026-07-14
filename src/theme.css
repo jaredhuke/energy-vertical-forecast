@@ -220,7 +220,7 @@ a { color: var(--blue); }
 .gantt th, .gantt td { border-bottom: 1px solid var(--border); }
 .gantt thead th { position: sticky; top: 0; z-index: 2; background: var(--surface-2); color: var(--text-dim); font-weight: 500; padding: 4px 0 5px; text-align: center; white-space: nowrap; }
 .gantt th.wk .wknum { display: block; font-size: 12px; font-weight: 650; color: var(--text); letter-spacing: 0.2px; }
-.gantt th.wk .wkdate { display: block; font-size: 9px; color: var(--text-faint); margin-top: -1px; }
+.gantt th.wk .wkdate { display: block; font-size: 9.5px; color: var(--text-faint); margin-top: -1px; }
 .gantt th.wk.today { box-shadow: inset 2px 0 0 var(--blue); }
 .gantt th.wk.today .wknum { color: var(--blue); }
 
@@ -318,7 +318,7 @@ a { color: var(--blue); }
 .util-grid th, .util-grid td { border-bottom: 1px solid var(--border); border-right: 1px solid var(--border); }
 .util-grid thead th { position: sticky; top: 0; z-index: 2; background: var(--surface-2); color: var(--text-faint); font-weight: 500; padding: 3px 0; text-align: center; white-space: nowrap; }
 .util-grid th.ru-wk .wknum { display: block; font-size: 11px; font-weight: 650; color: var(--text); letter-spacing: 0.2px; }
-.util-grid th.ru-wk .wkdate { display: block; font-size: 8.5px; color: var(--text-faint); margin-top: -1px; }
+.util-grid th.ru-wk .wkdate { display: block; font-size: 9.5px; color: var(--text-faint); margin-top: -1px; }
 .util-grid .ru-lab { position: sticky; left: 0; z-index: 1; background: #fff; width: 268px; text-align: left; padding: 4px 10px 4px 12px; border-right: 2px solid var(--border-strong); }
 .util-grid thead .ru-lab { z-index: 3; background: var(--surface-2); vertical-align: bottom; color: var(--text-faint); }
 .util-grid .ru-lab.team-energy { box-shadow: inset 4px 0 0 var(--energy); }
@@ -333,3 +333,20 @@ a { color: var(--blue); }
 /* Year boundary: stronger divider + the year itself as the column sub-label. */
 .util-grid th.ys, .util-grid td.ys { border-left: 2px solid var(--border-strong); }
 .util-grid th.ru-wk .wkdate.yr { color: var(--text); font-weight: 650; }
+
+/* Gantt cell whose person is over capacity that week (all projects combined) —
+   ring + bold ink, never colour alone (the tooltip carries the numbers). */
+.gantt td.cell.overcap { box-shadow: inset 0 0 0 2px var(--bad); }
+.gantt td.cell.overcap input { color: var(--bad); font-weight: 700; }
+
+/* Undo toast (bottom center, appears after a deletion) */
+.toast {
+  position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%);
+  display: flex; align-items: center; gap: 12px;
+  background: var(--text); color: #fff;
+  padding: 10px 12px 10px 16px; border-radius: var(--r);
+  box-shadow: 0 8px 28px rgba(20, 24, 40, 0.35);
+  font-size: 13px; z-index: 1000;
+}
+.toast .icon-btn { color: rgba(255, 255, 255, 0.75); }
+.toast .icon-btn:hover { color: #fff; }

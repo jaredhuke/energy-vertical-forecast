@@ -62,8 +62,8 @@ export function OpportunityMeta({ opp, onClose }: { opp: Opportunity; onClose?: 
         <div className="field">
           <span>Type</span>
           <div className="seg">
-            <button className={!internal ? 'on' : ''} onClick={() => update(opp.id, { type: 'external' })}>External</button>
-            <button className={internal ? 'on' : ''} onClick={() => update(opp.id, { type: 'internal' })}>Internal</button>
+            <button className={!internal ? 'on' : ''} aria-pressed={!internal} onClick={() => update(opp.id, { type: 'external' })}>External</button>
+            <button className={internal ? 'on' : ''} aria-pressed={internal} onClick={() => update(opp.id, { type: 'internal' })}>Internal</button>
           </div>
         </div>
         {!internal && (
@@ -76,11 +76,26 @@ export function OpportunityMeta({ opp, onClose }: { opp: Opportunity; onClose?: 
                 ))}
               </select>
             </label>
-            <label className="field" style={{ flex: '0 1 120px' }}>
-              Close % {opp.probabilityOverride == null && <span className="faint">(auto)</span>}
+            <label className="field" style={{ flex: '0 1 140px' }}>
+              <span>
+                Close %{' '}
+                {opp.probabilityOverride == null ? (
+                  <span className="faint">(auto from stage)</span>
+                ) : (
+                  <button
+                    className="linklike"
+                    style={{ color: 'var(--blue)', fontSize: 11 }}
+                    title="Clear the manual override and follow the stage default again"
+                    onClick={(e) => { e.preventDefault(); update(opp.id, { probabilityOverride: null }) }}
+                  >
+                    override — reset to auto
+                  </button>
+                )}
+              </span>
               <input
                 type="number" min={0} max={100} step={5}
                 value={Math.round(prob * 100)}
+                onWheel={(e) => e.currentTarget.blur()}
                 onChange={(e) => {
                   const v = e.target.value
                   update(opp.id, { probabilityOverride: v === '' ? null : Math.max(0, Math.min(100, Number(v))) / 100 })
@@ -109,19 +124,20 @@ export function OpportunityMeta({ opp, onClose }: { opp: Opportunity; onClose?: 
         </div>
         {!internal && (
           <>
-            <label className="field" style={{ flex: '0 1 150px' }}>
-              Deal value — total contract value ($)
+            <label className="field" style={{ flex: '0 1 170px' }}>
+              <span>Deal value — total contract value ($) <span className="faint num">{dealValue > 0 ? `= ${fmtMoney(dealValue)}` : ''}</span></span>
               <input
                 type="number" min={0} step={50000}
                 value={opp.dealValue ?? 0}
+                onWheel={(e) => e.currentTarget.blur()}
                 onChange={(e) => update(opp.id, { dealValue: Number(e.target.value) || 0 })}
               />
             </label>
             <div className="field">
               <span>Booking</span>
               <div className="seg">
-                <button className={opp.booking !== 'signed' ? 'on' : ''} onClick={() => update(opp.id, { booking: 'forecast' })}>Forecast</button>
-                <button className={opp.booking === 'signed' ? 'on' : ''} onClick={() => update(opp.id, { booking: 'signed' })}>Signed</button>
+                <button className={opp.booking !== 'signed' ? 'on' : ''} aria-pressed={opp.booking !== 'signed'} onClick={() => update(opp.id, { booking: 'forecast' })}>Forecast</button>
+                <button className={opp.booking === 'signed' ? 'on' : ''} aria-pressed={opp.booking === 'signed'} onClick={() => update(opp.id, { booking: 'signed' })}>Signed</button>
               </div>
             </div>
           </>

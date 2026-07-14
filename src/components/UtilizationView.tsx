@@ -131,9 +131,9 @@ export function UtilizationView() {
         <div className="h-row">
           <h2>Utilization heatmap — through {throughYear}</h2>
           <div className="row wrap" style={{ gap: 14 }}>
-            <div className="seg" role="tablist">
-              <button className={grain === 'week' ? 'on' : ''} onClick={() => setGrain('week')}>Weekly</button>
-              <button className={grain === 'month' ? 'on' : ''} onClick={() => setGrain('month')}>Monthly</button>
+            <div className="seg">
+              <button className={grain === 'week' ? 'on' : ''} aria-pressed={grain === 'week'} onClick={() => setGrain('week')}>Weekly</button>
+              <button className={grain === 'month' ? 'on' : ''} aria-pressed={grain === 'month'} onClick={() => setGrain('month')}>Monthly</button>
             </div>
             <div className="row" style={{ gap: 8 }}>
               <span className="faint" style={{ fontSize: 12 }}>Target</span>
@@ -145,7 +145,7 @@ export function UtilizationView() {
             </div>
             <span className="ru-legend"><span className="sw" style={{ background: `rgba(${BAND_RGB.under},0.6)` }} /> Under {targetPct}%</span>
             <span className="ru-legend"><span className="sw" style={{ background: `rgba(${BAND_RGB.on},0.6)` }} /> On target</span>
-            <span className="ru-legend"><span className="sw" style={{ background: `rgba(${BAND_RGB.over},0.6)` }} /> Over</span>
+            <span className="ru-legend"><span className="sw" style={{ background: `rgba(${BAND_RGB.over},0.6)` }} /> Over (marked !)</span>
             <span className="faint" style={{ fontSize: 11 }}>opacity = certainty</span>
           </div>
         </div>
@@ -199,8 +199,9 @@ export function UtilizationView() {
                       {cols.map((c, i) => {
                         const cell = c.cell(r)
                         return (
-                          <td key={i} className={`ru-cell${c.yearStart ? ' ys' : ''}`} style={cellStyle(cell, target)} title={cell.committed ? `${c.title}: ${Math.round(cell.util * 100)}% (target ${targetPct}%) · ${cell.committed.toFixed(2)} FTE · ${Math.round(cell.certainty * 100)}% certain` : `${c.title}: idle`}>
-                            {cell.committed > 0 ? <span className={cell.util > 1.02 ? 'ru-over-num' : ''}>{Math.round(cell.util * 100)}</span> : null}
+                          <td key={i} className={`ru-cell${c.yearStart ? ' ys' : ''}`} style={cellStyle(cell, target)} title={cell.committed ? `${c.title}: ${Math.round(cell.util * 100)}%${cell.util > 1.02 ? ' — OVER CAPACITY' : ''} (target ${targetPct}%) · ${cell.committed.toFixed(2)} FTE · ${Math.round(cell.certainty * 100)}% certain` : `${c.title}: idle`}>
+                            {/* over-capacity is marked by "!" + bold, not colour alone */}
+                            {cell.committed > 0 ? <span className={cell.util > 1.02 ? 'ru-over-num' : ''}>{Math.round(cell.util * 100)}{cell.util > 1.02 ? '!' : ''}</span> : null}
                           </td>
                         )
                       })}

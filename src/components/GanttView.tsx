@@ -1,9 +1,14 @@
-import { Fragment, useCallback, useMemo, useRef, useState } from 'react'
+import { Fragment, useMemo, useState } from 'react'
 import { useStore } from '../store/useStore'
-import type { Opportunity } from '../types'
+import type { ForecastState, Opportunity } from '../types'
 import { effectiveProbability, stageName } from '../lib/funnel'
+import { personLoads } from '../lib/analytics'
 import { addWeeks, isoWeekNum, weekKeyOf, weekLabel, weekRange, weeksBetween } from '../lib/weeks'
 import { fmtMoney } from '../lib/format'
+
+/** Prevent scroll-wheel from silently changing a focused number input while
+ *  panning the timeline — a classic spreadsheet-app data hazard. */
+const blurOnWheel = (e: React.WheelEvent<HTMLInputElement>) => (e.currentTarget as HTMLInputElement).blur()
 
 const COL = 46 // px per week column — must match the colgroup width below
 
@@ -14,8 +19,6 @@ function weightedFteWeeks(o: Opportunity, prob: number): number {
   return sum
 }
 
-type DragState = { oppId: string; startX: number; origStart: string; el: HTMLElement }
-type ResizeState = { oppId: string; startX: number; origDur: number; el: HTMLElement }
 
 export function GanttView() {
   const opportunities = useStore((s) => s.opportunities)
@@ -36,8 +39,6 @@ export function GanttView() {
   const [addPersonPick, setAddPersonPick] = useState('')
   const [addRoleText, setAddRoleText] = useState('')
   const [addRoleGroup, setAddRoleGroup] = useState<'energy' | 'delivery'>('energy')
-  const dragRef = useRef<DragState | null>(null)
-  const resizeRef = useRef<ResizeState | null>(null)
 
   const toggle = (id: string) =>
     setCollapsed((prev) => {
@@ -56,6 +57,18 @@ export function GanttView() {
   const weeks = weekRange(start, weeksBetween(start, end) + 3)
   const todayCol = weeksBetween(start, weekKeyOf())
 
+  // Cross-project load per named person per week, so a cell that pushes
+  // someone over capacity warns right where you're typing.
+  const stateObj = useMemo<ForecastState>(
+    () => ({ roster, stages, opportunities, snapshots: [], editor: '' }),
+    [roster, stages, opportunities],
+  )
+  const loadByPerson = useMemo(
+    () => new Map(personLoads(stateObj, weeks).map((l) => [l.person.id, l])),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [stateObj, weeks.length, weeks[0]],
+  )
+
   // Stable row order: re-sort only when the set of opportunities changes.
   const orderIds = useMemo(
     () => [...opportunities].sort((a, b) => weeksBetween(b.startWeek, a.startWeek)).map((o) => o.id),
@@ -65,77 +78,86 @@ export function GanttView() {
   const byId = new Map(opportunities.map((o) => [o.id, o]))
   const sorted = orderIds.map((id) => byId.get(id)).filter((o): o is Opportunity => !!o)
 
-  // ---- fluid slide: transform-follow the bar, snap to a week on release
-  const onMove = useCallback((e: PointerEvent) => {
-    const d = dragRef.current
-    if (!d) return
-    d.el.style.transform = `translateX(${e.clientX - d.startX}px)`
-  }, [])
-  const onUp = useCallback(
-    (e: PointerEvent) => {
-      const d = dragRef.current
-      if (!d) return
-      const dw = Math.round((e.clientX - d.startX) / COL)
-      d.el.style.transform = ''
-      if (dw !== 0) useStore.getState().updateOpportunity(d.oppId, { startWeek: addWeeks(d.origStart, dw) })
-      d.el.classList.remove('dragging')
-      window.removeEventListener('pointermove', onMove)
-      window.removeEventListener('pointerup', onUp)
-      dragRef.current = null
-      setDraggingId(null)
-    },
-    [onMove],
-  )
+  // ---- fluid slide: transform-follow the bar, snap to a week on release.
+  //      Escape or a cancelled pointer (alt-tab, touch interrupt) aborts the
+  //      move cleanly instead of leaking listeners mid-drag.
   function onBarDown(e: React.PointerEvent, opp: Opportunity) {
     if (e.button !== 0) return
     e.preventDefault()
     const el = e.currentTarget as HTMLElement
+    const startX = e.clientX
+    const origStart = opp.startWeek
     el.classList.add('dragging')
-    dragRef.current = { oppId: opp.id, startX: e.clientX, origStart: opp.startWeek, el }
-    window.addEventListener('pointermove', onMove)
-    window.addEventListener('pointerup', onUp)
+    const move = (ev: PointerEvent) => {
+      el.style.transform = `translateX(${ev.clientX - startX}px)`
+    }
+    const finish = (commit: boolean, clientX?: number) => {
+      el.style.transform = ''
+      el.classList.remove('dragging')
+      window.removeEventListener('pointermove', move)
+      window.removeEventListener('pointerup', up)
+      window.removeEventListener('pointercancel', cancel)
+      window.removeEventListener('keydown', key)
+      setDraggingId(null)
+      if (commit && clientX != null) {
+        const dw = Math.round((clientX - startX) / COL)
+        if (dw !== 0) useStore.getState().updateOpportunity(opp.id, { startWeek: addWeeks(origStart, dw) })
+      }
+    }
+    const up = (ev: PointerEvent) => finish(true, ev.clientX)
+    const cancel = () => finish(false)
+    const key = (ev: KeyboardEvent) => {
+      if (ev.key === 'Escape') finish(false)
+    }
+    window.addEventListener('pointermove', move)
+    window.addEventListener('pointerup', up)
+    window.addEventListener('pointercancel', cancel)
+    window.addEventListener('keydown', key)
     setDraggingId(opp.id)
   }
 
-  // ---- resize: drag the right edge to change duration, warn on data loss
-  const onResizeMove = useCallback((e: PointerEvent) => {
-    const d = resizeRef.current
-    if (!d) return
-    const w = Math.max(COL - 4, d.origDur * COL - 4 + (e.clientX - d.startX))
-    d.el.style.width = `${w}px`
-  }, [])
-  const onResizeUp = useCallback(
-    (e: PointerEvent) => {
-      const d = resizeRef.current
-      if (!d) return
-      const newDur = Math.max(1, Math.round(d.origDur + (e.clientX - d.startX) / COL))
-      d.el.classList.remove('resizing')
-      window.removeEventListener('pointermove', onResizeMove)
-      window.removeEventListener('pointerup', onResizeUp)
-      resizeRef.current = null
-      const st = useStore.getState()
-      const opp = st.opportunities.find((o) => o.id === d.oppId)
-      const resetWidth = () => (d.el.style.width = `${Math.max(0, d.origDur * COL - 4)}px`)
-      if (!opp || newDur === d.origDur) return resetWidth()
-      if (newDur < d.origDur) {
-        const lost = opp.assignments.some((a) => Object.keys(a.fte).some((k) => Number(k) >= newDur))
-        if (lost && !confirm(`Shortening “${opp.name}” to ${newDur} weeks will delete planned FTE beyond week ${newDur}. Continue?`)) {
-          return resetWidth()
-        }
-      }
-      st.setDuration(d.oppId, newDur) // re-render sets the width from the new duration
-    },
-    [onResizeMove],
-  )
+  // ---- resize: drag the right edge to change duration, warn on data loss.
+  //      Escape / pointer-cancel aborts, restoring the original width.
   function onResizeDown(e: React.PointerEvent, opp: Opportunity) {
     if (e.button !== 0) return
     e.preventDefault()
     e.stopPropagation() // don't start a slide
     const el = (e.currentTarget as HTMLElement).parentElement as HTMLElement
+    const startX = e.clientX
+    const origDur = opp.durationWeeks
     el.classList.add('resizing')
-    resizeRef.current = { oppId: opp.id, startX: e.clientX, origDur: opp.durationWeeks, el }
-    window.addEventListener('pointermove', onResizeMove)
-    window.addEventListener('pointerup', onResizeUp)
+    const resetWidth = () => (el.style.width = `${Math.max(0, origDur * COL - 4)}px`)
+    const move = (ev: PointerEvent) => {
+      el.style.width = `${Math.max(COL - 4, origDur * COL - 4 + (ev.clientX - startX))}px`
+    }
+    const finish = (commit: boolean, clientX?: number) => {
+      el.classList.remove('resizing')
+      window.removeEventListener('pointermove', move)
+      window.removeEventListener('pointerup', up)
+      window.removeEventListener('pointercancel', cancel)
+      window.removeEventListener('keydown', key)
+      if (!commit) return resetWidth()
+      const newDur = Math.max(1, Math.round(origDur + ((clientX ?? startX) - startX) / COL))
+      const st = useStore.getState()
+      const cur = st.opportunities.find((o) => o.id === opp.id)
+      if (!cur || newDur === origDur) return resetWidth()
+      if (newDur < origDur) {
+        const lost = cur.assignments.some((a) => Object.keys(a.fte).some((k) => Number(k) >= newDur))
+        if (lost && !confirm(`Shortening “${cur.name}” to ${newDur} weeks will delete planned FTE beyond week ${newDur}. Continue?`)) {
+          return resetWidth()
+        }
+      }
+      st.setDuration(opp.id, newDur) // re-render sets the width from the new duration
+    }
+    const up = (ev: PointerEvent) => finish(true, ev.clientX)
+    const cancel = () => finish(false)
+    const key = (ev: KeyboardEvent) => {
+      if (ev.key === 'Escape') finish(false)
+    }
+    window.addEventListener('pointermove', move)
+    window.addEventListener('pointerup', up)
+    window.addEventListener('pointercancel', cancel)
+    window.addEventListener('keydown', key)
   }
 
   function quickAdd(oppId: string) {
@@ -162,6 +184,7 @@ export function GanttView() {
           <button
             className={`btn sm ${editMode ? 'primary' : 'ghost'}`}
             onClick={() => setEditMode((v) => !v)}
+            aria-pressed={editMode}
             title="Reveal remove controls — deletions are permanent"
           >
             {editMode ? 'Done editing' : 'Edit roles'}
@@ -291,9 +314,20 @@ export function GanttView() {
                               const inSpan = off >= 0 && off < opp.durationWeeks
                               if (!inSpan) return <td key={w} className={`cell out ${i === todayCol ? 'today' : ''}`} />
                               const v = a.fte[String(off)] || 0
+                              // Warn in-place when this person's TOTAL load (all
+                              // projects) exceeds their capacity this week.
+                              const load = person ? loadByPerson.get(person.id) : undefined
+                              const wkTotal = load?.byWeek[w]?.committed ?? 0
+                              const over = !!person && v > 0 && wkTotal > person.capacity + 1e-9
                               return (
-                                <td key={w} className={`cell ${v ? a.group : ''} ${i === todayCol ? 'today' : ''}`}>
+                                <td
+                                  key={w}
+                                  className={`cell ${v ? a.group : ''} ${over ? 'overcap' : ''} ${i === todayCol ? 'today' : ''}`}
+                                  title={over ? `Over capacity: ${person!.name} is committed ${wkTotal.toFixed(2)} FTE of ${person!.capacity.toFixed(1)} across all projects in ${weekLabel(w)}` : undefined}
+                                >
                                   <input className="num" type="number" min={0} step={0.25} value={v || ''} placeholder="·"
+                                    aria-label={`${person ? person.name : a.role}, ${weekLabel(w)} FTE`}
+                                    onWheel={blurOnWheel}
                                     onChange={(e) => setFte(opp.id, a.id, off, Number(e.target.value) || 0)} />
                                 </td>
                               )

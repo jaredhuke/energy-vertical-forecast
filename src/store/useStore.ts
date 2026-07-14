@@ -1,10 +1,10 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type { Assignment, ForecastState, Group, Opportunity, Person, ProjectType, Snapshot } from '../types'
-import { DEFAULT_STAGES, effectiveProbability } from '../lib/funnel'
-import { demandByWeek, horizon, totals } from '../lib/analytics'
+import { DEFAULT_STAGES } from '../lib/funnel'
+import { demandByWeek, horizon, revenueTotals, totals } from '../lib/analytics'
 import type { Bundle } from '../lib/persistence'
-import { addWeeks } from '../lib/weeks'
+import { addWeeks, weekKeyOf } from '../lib/weeks'
 
 export type View = 'dashboard' | 'opportunities' | 'utilization' | 'revenue' | 'roster' | 'stages'
 
@@ -23,17 +23,16 @@ function nowIso(): string {
 interface UiState {
   view: View
   selectedOpportunityId: string | null
-  weightedView: boolean // dashboard: show weighted vs committed
   utilizationTarget: number // target utilization (0..1), e.g. 0.8 = 80% billable
   dirHandle: unknown | null // File System Access handle (not persisted)
   dirName: string | null
   dirty: boolean // unsaved changes vs connected folder
+  lastDeleted: Opportunity | null // most recent deletion, for the Undo toast (not persisted)
 }
 
 interface Actions {
   setView: (v: View) => void
   selectOpportunity: (id: string | null) => void
-  setWeightedView: (b: boolean) => void
   setUtilizationTarget: (t: number) => void
   setEditor: (name: string) => void
 
@@ -49,6 +48,8 @@ interface Actions {
   addOpportunity: (type?: ProjectType) => string
   updateOpportunity: (id: string, patch: Partial<Opportunity>) => void
   removeOpportunity: (id: string) => void
+  undoDelete: () => void
+  clearUndo: () => void
   duplicateOpportunity: (id: string) => void
   slideOpportunity: (id: string, deltaWeeks: number) => void
   setDuration: (id: string, weeks: number) => void
@@ -95,16 +96,15 @@ export const useStore = create<Store>()(
 
       view: 'dashboard',
       selectedOpportunityId: null,
-      weightedView: true,
       utilizationTarget: 0.8,
       dirHandle: null,
       dirName: null,
       dirty: false,
+      lastDeleted: null,
 
       // ---- ui ----
       setView: (view) => set({ view }),
       selectOpportunity: (selectedOpportunityId) => set({ selectedOpportunityId, view: 'opportunities' }),
-      setWeightedView: (weightedView) => set({ weightedView }),
       setUtilizationTarget: (t) => set({ utilizationTarget: Math.max(0.1, Math.min(1.2, t)) }),
       setEditor: (editor) => set({ editor }),
 
@@ -157,7 +157,7 @@ export const useStore = create<Store>()(
           stageId: get().stages[0]?.id ?? 'lead',
           dealValue: 0,
           booking: 'forecast',
-          startWeek: mondayKey(),
+          startWeek: weekKeyOf(),
           durationWeeks: 8,
           assignments: [],
           updatedAt: nowIso(),
@@ -171,8 +171,16 @@ export const useStore = create<Store>()(
         set((s) => ({
           opportunities: s.opportunities.filter((o) => o.id !== id),
           selectedOpportunityId: s.selectedOpportunityId === id ? null : s.selectedOpportunityId,
+          lastDeleted: s.opportunities.find((o) => o.id === id) ?? null,
           dirty: true,
         })),
+      undoDelete: () =>
+        set((s) =>
+          s.lastDeleted
+            ? { opportunities: [...s.opportunities, s.lastDeleted], lastDeleted: null, dirty: true }
+            : {},
+        ),
+      clearUndo: () => set({ lastDeleted: null }),
       duplicateOpportunity: (id) =>
         set((s) => {
           const src = s.opportunities.find((o) => o.id === id)
@@ -181,6 +189,9 @@ export const useStore = create<Store>()(
             ...src,
             id: uid('opp'),
             name: `${src.name} (copy)`,
+            // A copy is a new pursuit — never born signed (that would silently
+            // double the booked revenue the moment you duplicate).
+            booking: 'forecast',
             assignments: src.assignments.map((a) => ({ ...a, id: uid('a'), fte: { ...a.fte } })),
             updatedAt: nowIso(),
             updatedBy: s.editor,
@@ -248,6 +259,7 @@ export const useStore = create<Store>()(
           const { weeks } = horizon(s.opportunities)
           const demand = demandByWeek(s, weeks)
           const t = totals(demand)
+          const rev = revenueTotals(s)
           const byStage: Record<string, number> = {}
           for (const st of s.stages) byStage[st.id] = s.opportunities.filter((o) => o.stageId === st.id).length
           const snap: Snapshot = {
@@ -258,6 +270,8 @@ export const useStore = create<Store>()(
             byStage,
             committedFte: t.committed,
             weightedFte: t.weighted,
+            weightedRevenue: rev.weighted,
+            bookedRevenue: rev.booked,
           }
           return { snapshots: [...s.snapshots, snap], dirty: true }
         }),
@@ -305,22 +319,8 @@ export const useStore = create<Store>()(
         snapshots: s.snapshots,
         editor: s.editor,
         utilizationTarget: s.utilizationTarget,
+        view: s.view, // reopen where you left off
       }),
     },
   ),
 )
-
-function mondayKey(): string {
-  const d = new Date()
-  const dow = d.getDay()
-  const delta = dow === 0 ? -6 : 1 - dow
-  d.setDate(d.getDate() + delta)
-  const p = (n: number) => (n < 10 ? `0${n}` : `${n}`)
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`
-}
-
-/** Convenience selector: effective probability for an opportunity. */
-export function useOppProbability(o: Opportunity): number {
-  const stages = useStore((s) => s.stages)
-  return effectiveProbability(stages, o.stageId, o.probabilityOverride)
-}

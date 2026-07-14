@@ -48,12 +48,17 @@ function csvCell(v: string | number): string {
   return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
 }
 
-/** Flatten every assignment × week into one CSV row (Excel-friendly). */
+/** Flatten every assignment × week into one CSV row (Excel-friendly).
+ *  Probability matches the app: internal projects and signed deals are certain
+ *  work (1.00), so the WeightedFTE column agrees with every in-app number. */
 export function exportCsv(state: ForecastState) {
   const header = [
     'Opportunity',
     'Client',
+    'Type',
+    'Booking',
     'Stage',
+    'DealValue',
     'Probability',
     'Group',
     'Role',
@@ -65,7 +70,11 @@ export function exportCsv(state: ForecastState) {
   ]
   const rows: string[] = [header.join(',')]
   for (const o of state.opportunities) {
-    const prob = effectiveProbability(state.stages, o.stageId, o.probabilityOverride)
+    const internal = o.type === 'internal'
+    const prob =
+      internal || o.booking === 'signed'
+        ? 1
+        : effectiveProbability(state.stages, o.stageId, o.probabilityOverride)
     for (const a of o.assignments) {
       const person = a.personId ? state.roster.find((p) => p.id === a.personId)?.name ?? '' : ''
       for (let off = 0; off < o.durationWeeks; off++) {
@@ -76,7 +85,10 @@ export function exportCsv(state: ForecastState) {
           [
             o.name,
             o.client,
-            stageName(state.stages, o.stageId),
+            internal ? 'internal' : 'external',
+            internal ? '' : o.booking ?? 'forecast',
+            internal ? '' : stageName(state.stages, o.stageId),
+            internal ? '' : String(o.dealValue ?? 0),
             prob.toFixed(2),
             a.group,
             a.role,

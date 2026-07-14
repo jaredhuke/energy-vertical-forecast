@@ -84,6 +84,8 @@ export interface Snapshot {
   byStage: Record<string, number> // stageId -> count
   committedFte: number // total across horizon
   weightedFte: number // total across horizon
+  weightedRevenue?: number // $ pull-through at snapshot time
+  bookedRevenue?: number // $ signed at snapshot time
 }
 
 export interface ForecastState {

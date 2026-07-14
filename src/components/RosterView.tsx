@@ -49,8 +49,8 @@ function RosterTable({ group }: { group: Group }) {
                 </td>
                 <td><input className="plain" style={{ width: '100%' }} value={p.title} placeholder="—" onChange={(e) => set(p.id, { title: e.target.value })} /></td>
                 <td><input className="plain" style={{ width: '100%' }} value={p.role} onChange={(e) => set(p.id, { role: e.target.value })} /></td>
-                <td className="num"><input className="plain num" style={{ width: 60, textAlign: 'right' }} type="number" min={0} step={0.1} value={p.capacity} onChange={(e) => set(p.id, { capacity: Number(e.target.value) || 0 })} /></td>
-                <td className="num"><input className="plain num" style={{ width: 80, textAlign: 'right' }} type="number" min={0} step={100} value={p.costRate ?? ''} placeholder="—" onChange={(e) => set(p.id, { costRate: e.target.value === '' ? undefined : Number(e.target.value) })} /></td>
+                <td className="num"><input className="plain num" style={{ width: 60, textAlign: 'right' }} type="number" min={0} step={0.1} value={p.capacity} onWheel={(e) => e.currentTarget.blur()} onChange={(e) => set(p.id, { capacity: Number(e.target.value) || 0 })} /></td>
+                <td className="num"><input className="plain num" style={{ width: 80, textAlign: 'right' }} type="number" min={0} step={100} value={p.costRate ?? ''} placeholder="—" onWheel={(e) => e.currentTarget.blur()} onChange={(e) => set(p.id, { costRate: e.target.value === '' ? undefined : Number(e.target.value) })} /></td>
                 <td><button className="icon-btn" title="Remove" onClick={() => { if (confirm(`Remove ${p.name}? Their assignments become unassigned.`)) removePerson(p.id) }}>×</button></td>
               </tr>
             ))}

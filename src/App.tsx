@@ -24,9 +24,19 @@ export default function App() {
   const dirty = useStore((s) => s.dirty)
   const setDir = useStore((s) => s.setDir)
   const markSaved = useStore((s) => s.markSaved)
+  const lastDeleted = useStore((s) => s.lastDeleted)
+  const undoDelete = useStore((s) => s.undoDelete)
+  const clearUndo = useStore((s) => s.clearUndo)
 
   const fileInput = useRef<HTMLInputElement>(null)
   const [busy, setBusy] = useState('')
+
+  // The Undo toast lingers 8 seconds, then the deletion becomes final.
+  useEffect(() => {
+    if (!lastDeleted) return
+    const t = setTimeout(clearUndo, 8000)
+    return () => clearTimeout(t)
+  }, [lastDeleted, clearUndo])
 
   // First run: read the published dataset (the public data the site is hosted
   // with); fall back to the build-time bundled seed when offline / on file://.
@@ -105,7 +115,17 @@ export default function App() {
     file.text().then((t) => {
       try {
         const b = JSON.parse(t)
-        replaceAll({ roster: b.roster ?? [], stages: b.stages ?? [], opportunities: b.opportunities ?? [], snapshots: b.snapshots ?? [] })
+        // Guard against wiping real data with the wrong file: it must actually
+        // look like a forecast bundle, and replacing non-empty data is confirmed.
+        const looksRight = Array.isArray(b?.opportunities) || Array.isArray(b?.roster)
+        if (!looksRight) {
+          alert(`"${file.name}" doesn't look like a forecast bundle (no opportunities or roster). Nothing was imported.`)
+          return
+        }
+        const incoming = { roster: b.roster ?? [], stages: b.stages ?? [], opportunities: b.opportunities ?? [], snapshots: b.snapshots ?? [] }
+        const hasData = opportunities.length > 0 || roster.length > 0
+        if (hasData && !confirm(`Import ${incoming.opportunities.length} opportunities and ${incoming.roster.length} people from "${file.name}"? This replaces your current working data.`)) return
+        replaceAll(incoming)
       } catch {
         alert('Not a valid forecast bundle JSON.')
       }
@@ -174,11 +194,12 @@ export default function App() {
           </div>
         </div>
 
-        <nav className="tabs">
+        <nav className="tabs" aria-label="Views">
           {tabs.map((t) => (
             <button
               key={t.id}
               className={`tab ${view === t.id ? 'active' : ''}`}
+              aria-current={view === t.id ? 'page' : undefined}
               onClick={() => setView(t.id)}
             >
               {t.label}
@@ -196,6 +217,14 @@ export default function App() {
         {view === 'roster' && <RosterView />}
         {view === 'stages' && <StagesView />}
       </main>
+
+      {lastDeleted && (
+        <div className="toast" role="status">
+          <span>Deleted “{lastDeleted.name}”</span>
+          <button className="btn sm primary" onClick={undoDelete}>Undo</button>
+          <button className="icon-btn" title="Dismiss" aria-label="Dismiss" onClick={clearUndo}>×</button>
+        </div>
+      )}
     </div>
   )
 }
