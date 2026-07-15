@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import { useStore } from '../store/useStore'
 import type { ForecastState } from '../types'
-import { energyUtilization, horizon, marginTotals, revenueByEnergyRole, revenueTotals } from '../lib/analytics'
+import { energyUtilization, horizon, marginTotals, pipelineByCustomerType, revenueByEnergyRole, revenueTotals } from '../lib/analytics'
 import { fmtMoney, fmtMoneyFull } from '../lib/format'
 
 const pct = (v: number) => `${Math.round(v * 100)}%`
@@ -26,6 +26,7 @@ export function RevenueView() {
     [state, weeks],
   )
   const m = useMemo(() => marginTotals(state), [state])
+  const byCustomer = useMemo(() => pipelineByCustomerType(state), [state])
 
   // Role-level cost = Σ its people's cost (roles inherit cost from named staff).
   const roleCost = useMemo(() => {
@@ -75,6 +76,43 @@ export function RevenueView() {
           <div className="kpi"><div className="label">Blended margin</div><div className="value num">{pct(m.blendedMarginPct)}</div><div className="delta flat">{m.internalCost ? `+ ${fmtMoney(m.internalCost)} internal` : 'of blended value'}</div></div>
         </div>
       )}
+
+      {/* Pillar 4 — pipeline split by customer type × booked vs anticipated */}
+      <div className="card">
+        <div className="h-row">
+          <h2>New vs existing customer pipeline</h2>
+          <span className="faint" style={{ fontSize: 11 }}>booked = signed · anticipated = forecast × close % · set New/Existing in Opportunities</span>
+        </div>
+        <table className="sheet">
+          <thead>
+            <tr>
+              <th>Customer</th><th className="num">Deals</th>
+              <th className="num">Booked $</th><th className="num">Anticipated $</th><th className="num">Total $</th>
+            </tr>
+          </thead>
+          <tbody>
+            {byCustomer.map((c) => {
+              const total = c.booked + c.anticipated
+              return (
+                <tr key={c.customerType}>
+                  <td style={{ fontWeight: 550 }}>{c.label}</td>
+                  <td className="num faint">{c.count}</td>
+                  <td className="num" style={{ color: c.booked ? 'var(--good)' : 'var(--text-faint)' }}>{fmtMoneyFull(c.booked)}</td>
+                  <td className="num" style={{ color: c.anticipated ? 'var(--blue)' : 'var(--text-faint)' }}>{fmtMoneyFull(c.anticipated)}</td>
+                  <td className="num" style={{ fontWeight: 600 }}>{fmtMoneyFull(total)}</td>
+                </tr>
+              )
+            })}
+            <tr style={{ borderTop: '2px solid var(--border-strong)' }}>
+              <td style={{ fontWeight: 600 }}>All</td>
+              <td className="num faint">{byCustomer.reduce((s, c) => s + c.count, 0)}</td>
+              <td className="num" style={{ color: 'var(--good)', fontWeight: 600 }}>{fmtMoneyFull(byCustomer.reduce((s, c) => s + c.booked, 0))}</td>
+              <td className="num" style={{ color: 'var(--blue)', fontWeight: 600 }}>{fmtMoneyFull(byCustomer.reduce((s, c) => s + c.anticipated, 0))}</td>
+              <td className="num" style={{ fontWeight: 700 }}>{fmtMoneyFull(byCustomer.reduce((s, c) => s + c.booked + c.anticipated, 0))}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
 
       <div className="card">
         <h2>Value by energy role</h2>

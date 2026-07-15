@@ -28,6 +28,7 @@ import {
   timeSplitByWorkType,
   oppWorkType,
   oppCustomerType,
+  pipelineByCustomerType,
 } from './analytics'
 import { addWeeks, weekKeyOf, mondayOf, dateKey, weekRange } from './weeks'
 
@@ -654,6 +655,32 @@ describe('timeSplitByWorkType + work/customer helpers', () => {
     expect(g('partner')).toBeCloseTo(0.5, 6)
     // shares sum to 1
     expect(slices.reduce((s, x) => s + x.share, 0)).toBeCloseTo(1, 6)
+  })
+})
+
+// ===========================================================================
+// PIPELINE BY CUSTOMER TYPE — new vs existing × booked vs anticipated.
+// ===========================================================================
+describe('pipelineByCustomerType', () => {
+  it('defaults to existing; internal excluded; booked vs anticipated split', () => {
+    const rows = pipelineByCustomerType(state)
+    const ex = rows.find((r) => r.customerType === 'existing')!
+    const nw = rows.find((r) => r.customerType === 'new')!
+    // o1 signed $1.0M (booked), o2 forecast 50% of $2.0M = $1.0M (anticipated), o3 internal excluded
+    expect(ex.booked).toBe(1_000_000)
+    expect(ex.anticipated).toBeCloseTo(1_000_000, 6)
+    expect(ex.count).toBe(2)
+    expect(nw.count).toBe(0)
+    expect(nw.booked + nw.anticipated).toBe(0)
+  })
+  it('respects the customerType tag', () => {
+    const st: ForecastState = {
+      ...state,
+      opportunities: [{ ...opportunities[0], customerType: 'new' }, opportunities[1], opportunities[2]],
+    }
+    const rows = pipelineByCustomerType(st)
+    expect(rows.find((r) => r.customerType === 'new')!.booked).toBe(1_000_000) // o1 → new
+    expect(rows.find((r) => r.customerType === 'existing')!.anticipated).toBeCloseTo(1_000_000, 6) // o2 stays
   })
 })
 

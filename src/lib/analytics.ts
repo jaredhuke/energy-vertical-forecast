@@ -747,3 +747,35 @@ export function timeSplitByWorkType(
   const slices = WORK_TYPES.map((t) => ({ workType: t.id, label: t.label, fteWeeks: buckets[t.id], share: total ? buckets[t.id] / total : 0 }))
   return { slices, total }
 }
+
+// ---------------------------------------------------------------------------
+// Pipeline split by customer type (new vs existing) × booked (signed) vs
+// anticipated (forecast pull-through). Internal projects are not revenue.
+// ---------------------------------------------------------------------------
+export interface CustomerPipeline {
+  customerType: CustomerType
+  label: string
+  booked: number // signed bookings $
+  anticipated: number // forecast weighted pull-through $
+  count: number
+  tcv: number // total contract value $
+}
+
+export function pipelineByCustomerType(state: ForecastState): CustomerPipeline[] {
+  const b: Record<CustomerType, { booked: number; anticipated: number; count: number; tcv: number }> = {
+    new: { booked: 0, anticipated: 0, count: 0, tcv: 0 },
+    existing: { booked: 0, anticipated: 0, count: 0, tcv: 0 },
+  }
+  for (const o of state.opportunities) {
+    if (o.type === 'internal') continue // internal work is not sales revenue
+    const ct = oppCustomerType(o)
+    b[ct].count++
+    b[ct].tcv += o.dealValue || 0
+    b[ct].booked += oppBookedRevenue(o)
+    b[ct].anticipated += oppWeightedRevenue(state, o)
+  }
+  return [
+    { customerType: 'new', label: 'New customer', ...b.new },
+    { customerType: 'existing', label: 'Existing customer', ...b.existing },
+  ]
+}
