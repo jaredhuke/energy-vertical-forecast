@@ -6,7 +6,7 @@ import { demandByWeek, horizon, revenueTotals, totals } from '../lib/analytics'
 import type { Bundle } from '../lib/persistence'
 import { addWeeks, weekKeyOf } from '../lib/weeks'
 
-export type View = 'dashboard' | 'opportunities' | 'utilization' | 'revenue' | 'roster' | 'stages'
+export type View = 'dashboard' | 'opportunities' | 'utilization' | 'capacity' | 'revenue' | 'roster' | 'stages'
 
 function uid(prefix: string): string {
   const rnd =

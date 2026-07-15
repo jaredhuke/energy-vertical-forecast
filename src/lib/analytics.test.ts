@@ -20,6 +20,7 @@ import {
   energyUtilization,
   rosterUtilization,
   activeHorizonWeeks,
+  roleDemandVsCapacity,
   utilBand,
 } from './analytics'
 import { addWeeks, weekKeyOf, mondayOf, dateKey, weekRange } from './weeks'
@@ -330,6 +331,45 @@ describe('rosterUtilization — planned mode + active-horizon window (Part 1)', 
       }],
     }
     expect(activeHorizonWeeks(st, longWeeks)).toBe(20) // through the last staffed week
+  })
+})
+
+describe('roleDemandVsCapacity — can we deliver the pipeline? (Part 2)', () => {
+  it('expected mode: demand vs roster capacity per role', () => {
+    const rows = Object.fromEntries(roleDemandVsCapacity(state, WEEKS, 'expected').map((r) => [`${r.group}:${r.role}`, r]))
+    const sa = rows['energy:Solution Architect']
+    expect(sa.capacity).toBeCloseTo(1.0, 10) // Alice
+    expect(sa.weekly[1].demand).toBeCloseTo(0.75, 10) // O1 0.5(×1) + O2 0.5(×0.5)
+    expect(sa.shortWeeks).toBe(0)
+    const con = rows['energy:Consultant']
+    expect(con.capacity).toBeCloseTo(0.5, 10) // Bob
+    expect(con.weekly[0].demand).toBeCloseTo(0.5, 10) // O3 internal 0.5 ×1
+    expect(con.shortWeeks).toBe(0) // 0.5 demand == 0.5 cap, not over
+    const eng = rows['delivery:Engineer']
+    expect(eng.capacity).toBeCloseTo(1.0, 10)
+    expect(eng.weekly[0].demand).toBeCloseTo(1.0, 10)
+  })
+  it('planned mode surfaces a real shortfall (Consultant needs 0.6 vs 0.5 capacity in W1)', () => {
+    const con = roleDemandVsCapacity(state, WEEKS, 'planned').find((r) => r.role === 'Consultant')!
+    expect(con.weekly[1].demand).toBeCloseTo(0.6, 10)
+    expect(con.weekly[1].short).toBeCloseTo(0.1, 10)
+    expect(con.shortWeeks).toBe(1)
+    expect(con.peakShort).toBeCloseTo(0.1, 10)
+  })
+  it('demand for a role nobody in the roster has is ALL shortfall (capacity 0)', () => {
+    const st: ForecastState = {
+      ...state,
+      opportunities: [{
+        id: 'ods', name: '', client: '', type: 'external', booking: 'signed', stageId: 'closed',
+        dealValue: 0, startWeek: '2026-01-05', durationWeeks: 1,
+        assignments: [{ id: 'u', role: 'Data Scientist', group: 'delivery', fte: { '0': 1 } }],
+      }],
+    }
+    const ds = roleDemandVsCapacity(st, WEEKS, 'expected').find((r) => r.role === 'Data Scientist')!
+    expect(ds.capacity).toBe(0)
+    expect(ds.people).toBe(0)
+    expect(ds.weekly[0].demand).toBeCloseTo(1.0, 10)
+    expect(ds.weekly[0].short).toBeCloseTo(1.0, 10)
   })
 })
 

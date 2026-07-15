@@ -240,6 +240,94 @@ export function unstaffedRoles(state: ForecastState): UnstaffedRole[] {
   return out.sort((a, b) => b.fteWeeks - a.fteWeeks)
 }
 
+// ---------------------------------------------------------------------------
+// Demand vs capacity, by role — "can we deliver the pipeline?" For each role
+// it compares weekly DEMAND (FTE the pipeline needs, expected or planned)
+// against the roster CAPACITY for that role, and flags the shortfall weeks.
+// A role with demand but nobody in the roster (capacity 0) is all shortfall.
+// ---------------------------------------------------------------------------
+export interface RoleCapacityCell {
+  demand: number // FTE needed this week (× close % in 'expected' mode)
+  capacity: number // roster capacity for the role (constant across weeks)
+  short: number // max(0, demand − capacity)
+}
+export interface RoleCapacityRow {
+  role: string
+  group: Group
+  capacity: number // total roster capacity for the role
+  people: number // roster headcount with the role
+  weekly: RoleCapacityCell[]
+  peakDemand: number // within the stats window
+  peakShort: number // biggest FTE shortfall within the window
+  shortWeeks: number // weeks demand > capacity within the window
+}
+
+export function roleDemandVsCapacity(
+  state: ForecastState,
+  weeks: string[],
+  mode: 'expected' | 'planned' = 'expected',
+  statsWeeks?: number,
+): RoleCapacityRow[] {
+  const idx = new Map(weeks.map((w, i) => [w, i]))
+  // capacity + headcount per role (keyed by group:role)
+  const cap = new Map<string, { role: string; group: Group; capacity: number; people: number }>()
+  for (const p of state.roster) {
+    const key = `${p.group}:${p.role}`
+    const rec = cap.get(key) || { role: p.role, group: p.group, capacity: 0, people: 0 }
+    rec.capacity += p.capacity || 0
+    rec.people += 1
+    cap.set(key, rec)
+  }
+  // weekly demand per role
+  const demand = new Map<string, number[]>()
+  const ensure = (key: string, role: string, group: Group) => {
+    let a = demand.get(key)
+    if (!a) {
+      a = new Array(weeks.length).fill(0)
+      demand.set(key, a)
+      if (!cap.has(key)) cap.set(key, { role, group, capacity: 0, people: 0 }) // demand for a role we have nobody for
+    }
+    return a
+  }
+  for (const o of state.opportunities) {
+    const prob = mode === 'planned' ? 1 : oppProbability(state, o)
+    const base = oppStartMonday(o)
+    for (const a of o.assignments) {
+      const key = `${a.group}:${a.role}`
+      const arr = ensure(key, a.role, a.group)
+      for (let off = 0; off < o.durationWeeks; off++) {
+        const fte = a.fte[String(off)] || 0
+        if (!fte) continue
+        const i = idx.get(addWeeks(base, off))
+        if (i == null) continue
+        arr[i] += fte * prob
+      }
+    }
+  }
+  const win = statsWeeks ?? activeHorizonWeeks(state, weeks)
+  const rows: RoleCapacityRow[] = [...cap.entries()].map(([key, c]) => {
+    const d = demand.get(key) ?? new Array(weeks.length).fill(0)
+    const weekly: RoleCapacityCell[] = d.map((dem) => ({ demand: dem, capacity: c.capacity, short: Math.max(0, dem - c.capacity) }))
+    const stats = weekly.slice(0, Math.max(1, Math.min(win, weekly.length)))
+    return {
+      role: c.role,
+      group: c.group,
+      capacity: c.capacity,
+      people: c.people,
+      weekly,
+      peakDemand: stats.reduce((m, x) => Math.max(m, x.demand), 0),
+      peakShort: stats.reduce((m, x) => Math.max(m, x.short), 0),
+      shortWeeks: stats.filter((x) => x.short > 1e-9).length,
+    }
+  })
+  // Biggest gaps first (peak shortfall), energy grouped ahead of delivery.
+  return rows.sort((a, b) => {
+    if (a.group !== b.group) return a.group === 'energy' ? -1 : 1
+    if (b.peakShort !== a.peakShort) return b.peakShort - a.peakShort
+    return b.peakDemand - a.peakDemand
+  })
+}
+
 export function funnelCounts(state: ForecastState): { stageId: string; count: number }[] {
   return state.stages.map((s) => ({
     stageId: s.id,

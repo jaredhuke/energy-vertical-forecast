@@ -9,6 +9,7 @@ import { Modal } from './components/Modal'
 import { Dashboard } from './components/Dashboard'
 import { OpportunitiesView } from './components/OpportunitiesView'
 import { UtilizationView } from './components/UtilizationView'
+import { CapacityView } from './components/CapacityView'
 import { RevenueView } from './components/RevenueView'
 import { RosterView } from './components/RosterView'
 import { StagesView } from './components/StagesView'
@@ -206,6 +207,7 @@ export default function App() {
     { id: 'dashboard', label: 'Dashboard' },
     { id: 'opportunities', label: 'Opportunities', count: opportunities.length },
     { id: 'utilization', label: 'Utilization' },
+    { id: 'capacity', label: 'Capacity' },
     { id: 'revenue', label: 'Revenue' },
     { id: 'roster', label: 'Roster', count: roster.length },
     { id: 'stages', label: 'Funnel' },
@@ -280,6 +282,7 @@ export default function App() {
         {view === 'dashboard' && <Dashboard />}
         {view === 'opportunities' && <OpportunitiesView />}
         {view === 'utilization' && <UtilizationView />}
+        {view === 'capacity' && <CapacityView />}
         {view === 'revenue' && <RevenueView />}
         {view === 'roster' && <RosterView />}
         {view === 'stages' && <StagesView />}
