@@ -165,8 +165,16 @@ label.field { display: flex; flex-direction: column; gap: 4px; font-size: 12px; 
 .lock-card input { padding: 9px 10px; }
 
 /* ---- main / cards ---- */
-.main { flex: 1; overflow: auto; padding: 20px; }
+.app-body { display: flex; flex: 1; min-height: 0; }
+.main { flex: 1; overflow: auto; padding: 20px; min-width: 0; }
 .grid { display: grid; gap: 16px; grid-template-columns: minmax(0, 1fr); }
+
+/* Persistent docked detail panel (person detail) — stays open beside the
+   content; clicking another name just updates it (no modal, no new page). */
+.detail-panel { flex: 0 0 auto; width: clamp(380px, 42vw, 760px); overflow-y: auto; border-left: 1px solid var(--border-strong); background: var(--surface); box-shadow: -12px 0 40px rgba(20, 24, 50, 0.08); animation: panel-in 0.16s ease-out; }
+.detail-panel > .card { border: none; border-radius: 0; box-shadow: none; min-height: 100%; }
+@keyframes panel-in { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: none; } }
+@media (max-width: 760px) { .detail-panel { width: 100%; } .app-body.has-panel .main { display: none; } }
 .card {
   background: linear-gradient(180deg, #ffffff 0%, #fdfdfb 100%);
   border: 1px solid var(--border); border-radius: var(--r); padding: 16px; box-shadow: var(--shadow);
