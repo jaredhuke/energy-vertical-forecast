@@ -7,6 +7,7 @@ import { GitHubDataError, loadFromGitHub, saveToGitHub } from './lib/githubData'
 import { downloadTemplate, parseOpportunityWorkbook, type ImportDraft } from './lib/xlsxImport'
 import { ImportExcel } from './components/ImportExcel'
 import { GitHubConnectModal } from './components/GitHubConnectModal'
+import { LockScreen } from './components/LockScreen'
 import { Modal } from './components/Modal'
 import { Dashboard } from './components/Dashboard'
 import { OpportunitiesView } from './components/OpportunitiesView'
@@ -79,6 +80,9 @@ export default function App() {
   const githubCfg = useStore((s) => s.githubCfg)
   const githubSha = useStore((s) => s.githubSha)
   const setGithubSha = useStore((s) => s.setGithubSha)
+  const setGithubCfg = useStore((s) => s.setGithubCfg)
+  const demoMode = useStore((s) => s.demoMode)
+  const setDemoMode = useStore((s) => s.setDemoMode)
 
   const fileInput = useRef<HTMLInputElement>(null)
   const excelInput = useRef<HTMLInputElement>(null)
@@ -93,10 +97,9 @@ export default function App() {
     return () => clearTimeout(t)
   }, [lastDeleted, clearUndo])
 
-  // First run. If connected to a private GitHub dataset, that shared data is
-  // the source of truth — pull it on open (silent on failure so a stale token
-  // just leaves the last local copy in place). Otherwise read the published
-  // dataset, falling back to the build-time seed offline / on file://.
+  // On open, if a team key is stored, that private shared data is the source of
+  // truth — pull it (silent on failure so a stale key just leaves the last local
+  // copy). With no key the app stays locked (LockScreen) until a key is entered.
   useEffect(() => {
     if (githubCfg) {
       loadFromGitHub(githubCfg)
@@ -108,18 +111,22 @@ export default function App() {
           }
         })
         .catch(() => {
-          /* keep the persisted local copy; the user can reconnect via the header */
+          /* keep the persisted local copy; the user can re-enter the key */
         })
-      return
     }
-    if (roster.length === 0 && opportunities.length === 0) {
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // Demo mode (no key): load the public/seed data so the demo has something to show.
+  useEffect(() => {
+    if (demoMode && !githubCfg && roster.length === 0 && opportunities.length === 0) {
       loadPublishedDataset().then((b) => {
         if (b && (b.opportunities.length || b.roster.length)) replaceAll(b)
         else loadSeed().then((s) => s && replaceAll(s))
       })
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [demoMode])
 
   // Pull the latest published dataset on demand (replaces the working copy).
   async function loadPublished() {
@@ -265,6 +272,11 @@ export default function App() {
     { id: 'roster', label: 'Roster & funnel', count: roster.length },
   ]
 
+  // Locked front door: no team key and not viewing the demo → the shared
+  // workspace stays hidden behind the LockScreen (real: a wrong key can't read
+  // the private data repo). Placed after all hooks so hook order is stable.
+  if (!githubCfg && !demoMode) return <LockScreen />
+
   return (
     <div className="app">
       <header className="header">
@@ -272,7 +284,7 @@ export default function App() {
           <div className="brand">
             <span className="dot" />
             <h1>Energy Vertical</h1>
-            <span className="sub">Presales Forecast</span>
+            <span className="sub">{demoMode ? 'Presales Forecast · Demo' : 'Presales Forecast'}</span>
           </div>
 
           <div className="spacer" />
@@ -305,14 +317,19 @@ export default function App() {
               </button>
             </>
           ) : (
-            <button className="btn ghost" onClick={() => setShowGithub(true)} title="Point the app at a private (invite-only) GitHub repo as the shared dataset">
-              Connect shared data
+            <button className="btn primary" onClick={() => setDemoMode(false)} title="Sign in with your team access key to load the shared data">
+              Sign in
             </button>
           )}
 
           <DataMenu
             items={[
-              { label: githubCfg ? `Shared data: ${githubCfg.owner}/${githubCfg.repo}…` : 'Shared data on GitHub…', onPick: () => setShowGithub(true) },
+              ...(githubCfg
+                ? [
+                    { label: `Shared data settings: ${githubCfg.owner}/${githubCfg.repo}…`, onPick: () => setShowGithub(true) },
+                    { label: 'Log out', onPick: () => { setGithubCfg(null); setDemoMode(false) } },
+                  ]
+                : [{ label: 'Sign in with team key', onPick: () => setDemoMode(false) }, { label: 'Shared data on GitHub…', onPick: () => setShowGithub(true) }]),
               ...(fsSupported() && !githubCfg ? [{ label: dirHandle ? `Folder: ${dirName}` : 'Connect a local/SharePoint folder', onPick: connect }] : []),
               { label: 'Import from Excel…', onPick: () => excelInput.current?.click() },
               { label: 'Download Excel template', onPick: () => downloadTemplate(stages, roster) },

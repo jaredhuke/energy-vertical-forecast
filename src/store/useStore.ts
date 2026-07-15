@@ -33,6 +33,7 @@ interface UiState {
   dirty: boolean // unsaved changes vs connected folder
   githubCfg: GitHubConfig | null // connected private-repo shared dataset (persisted, incl. the user's own token)
   githubSha: string | null // last-loaded dataset.json SHA (optimistic lock; not persisted)
+  demoMode: boolean // viewing the public demo without a key (bypasses the lock screen; not persisted)
   lastDeleted: Opportunity | null // most recent deletion, for the Undo toast (not persisted)
 }
 
@@ -85,6 +86,7 @@ interface Actions {
   // github private shared dataset
   setGithubCfg: (cfg: GitHubConfig | null) => void
   setGithubSha: (sha: string | null) => void
+  setDemoMode: (v: boolean) => void
 }
 
 export type Store = ForecastState & UiState & Actions
@@ -122,6 +124,7 @@ export const useStore = create<Store>()(
       dirty: false,
       githubCfg: null,
       githubSha: null,
+      demoMode: false,
       lastDeleted: null,
 
       // ---- ui ----
@@ -330,6 +333,7 @@ export const useStore = create<Store>()(
 
       setGithubCfg: (githubCfg) => set({ githubCfg, githubSha: null }),
       setGithubSha: (githubSha) => set({ githubSha }),
+      setDemoMode: (demoMode) => set({ demoMode }),
     }),
     {
       name: 'evf-state-v1',

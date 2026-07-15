@@ -24,6 +24,17 @@ export interface GitHubConfig {
   token: string
 }
 
+/** The shared data repo the lock-screen "team key" unlocks. Baked in so a
+ *  teammate enters only the KEY (like a password), not the repo. The repo name
+ *  is not a secret — the repo is private, so it gives nothing without a token.
+ *  Overridable at build time for a different deployment. */
+export const DEFAULT_DATA_REPO = {
+  owner: (import.meta as any).env?.VITE_DATA_OWNER || 'jaredhuke',
+  repo: (import.meta as any).env?.VITE_DATA_REPO || 'energy-vertical-forecast-data',
+  branch: (import.meta as any).env?.VITE_DATA_BRANCH || 'main',
+  dir: 'data',
+} as const
+
 const API = 'https://api.github.com'
 
 function ghHeaders(token: string): HeadersInit {
