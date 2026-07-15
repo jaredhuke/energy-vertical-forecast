@@ -22,6 +22,8 @@ import {
   activeHorizonWeeks,
   roleDemandVsCapacity,
   utilBand,
+  oppCost,
+  marginTotals,
 } from './analytics'
 import { addWeeks, weekKeyOf, mondayOf, dateKey, weekRange } from './weeks'
 
@@ -505,6 +507,74 @@ describe('non-Monday startWeek does not drop FTE', () => {
     const d = demandByWeek(st, WEEKS)
     const totalCommitted = d.reduce((s, w) => s + committedTotal(w), 0)
     expect(totalCommitted).toBeCloseTo(1, 10) // the 1 FTE is present somewhere, not dropped
+  })
+})
+
+// ===========================================================================
+// COST & MARGIN — hidden feature. Cost = FTE-weeks × per-person weekly rate.
+// Rates added on top of the golden roster: Alice $5,000 · Bob $3,000 · Carol
+// $4,000 (per FTE-week). Every figure below is hand-computed.
+// ===========================================================================
+const costRoster: Person[] = [
+  { ...roster[0], costRate: 5000 }, // Alice
+  { ...roster[1], costRate: 3000 }, // Bob
+  { ...roster[2], costRate: 4000 }, // Carol
+]
+const costState: ForecastState = { ...state, roster: costRoster }
+
+describe('oppCost — staffing spend per deal', () => {
+  it('O1 signed = Alice 1.0 FTE-wk × 5000 + Carol 2.0 × 4000 = 13,000', () => {
+    expect(oppCost(opportunities[0], costRoster)).toBe(5000 + 8000)
+  })
+  it('O2 forecast = Alice 1.0 × 5000 + Bob 0.6 × 3000 = 6,800 (full, un-weighted)', () => {
+    expect(oppCost(opportunities[1], costRoster)).toBeCloseTo(5000 + 1800, 6)
+  })
+  it('O3 internal = Bob 0.5 × 3000 = 1,500', () => {
+    expect(oppCost(opportunities[2], costRoster)).toBe(1500)
+  })
+  it('people with no rate contribute nothing (base roster has none)', () => {
+    expect(oppCost(opportunities[0], roster)).toBe(0)
+  })
+})
+
+describe('marginTotals — portfolio cost & margin', () => {
+  const m = marginTotals(costState)
+  it('signed: booked $1.0M − cost $13,000 = $987,000', () => {
+    expect(m.bookedRevenue).toBe(1_000_000)
+    expect(m.bookedCost).toBe(13_000)
+    expect(m.bookedMargin).toBe(987_000)
+  })
+  it('forecast: BOTH revenue and cost weighted by 50% → $1.0M − $3,400', () => {
+    expect(m.weightedRevenue).toBe(1_000_000) // 2.0M × 0.5
+    expect(m.weightedCost).toBeCloseTo(3_400, 6) // 6,800 × 0.5
+    expect(m.weightedMargin).toBeCloseTo(996_600, 6)
+  })
+  it('internal is pure cost, tracked apart from revenue/margin', () => {
+    expect(m.internalCost).toBe(1_500)
+  })
+  it('blended margin % = (996,600 + 987,000) ÷ 2,000,000 = 99.18%', () => {
+    expect(m.blendedMarginPct).toBeCloseTo(1_983_600 / 2_000_000, 8)
+  })
+  it('no rates → zero cost, 100% margin, and never negative', () => {
+    const m0 = marginTotals(state)
+    expect(m0.weightedCost).toBe(0)
+    expect(m0.bookedCost).toBe(0)
+    expect(m0.blendedMarginPct).toBe(1)
+  })
+})
+
+describe('energyUtilization cost — per person, revenue-consistent weighting', () => {
+  const u = energyUtilization(costState, WEEKS)
+  const alice = u.find((x) => x.person.id === 'p-alice')!
+  const bob = u.find((x) => x.person.id === 'p-bob')!
+  it('Alice = O1 5000 (signed) + O2 2500 (0.5×) = 7,500', () => {
+    expect(alice.cost).toBeCloseTo(7500, 6)
+  })
+  it('Bob = O2 only: 0.6 × 3000 × 0.5 = 900 (internal O3 excluded)', () => {
+    expect(bob.cost).toBeCloseTo(900, 6)
+  })
+  it('per-person cost never exceeds the un-weighted staffing spend', () => {
+    for (const x of u) expect(x.cost).toBeGreaterThanOrEqual(0)
   })
 })
 

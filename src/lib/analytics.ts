@@ -382,6 +382,76 @@ export function revenueTotals(state: ForecastState) {
   return { tcv, weighted, booked, signedCount, forecastCount, blended: weighted + booked }
 }
 
+// ---------------------------------------------------------------------------
+// Cost & margin (optional — hidden by default). Cost = staffing spend from the
+// roster's per-person weekly cost rates. Expected (weighted) figures multiply
+// BOTH revenue and cost by close % (you only staff/spend if you win); signed
+// deals count fully. Internal projects are pure cost (no revenue), tracked
+// separately as investment.
+// ---------------------------------------------------------------------------
+
+/** Full staffing cost of a deal if it lands = Σ named-assignment FTE-weeks ×
+ *  that person's weekly cost rate. Role lines / people with no rate add 0. */
+export function oppCost(o: Opportunity, roster: Person[]): number {
+  let cost = 0
+  for (const a of o.assignments) {
+    if (!a.personId) continue
+    const rate = roster.find((p) => p.id === a.personId)?.costRate
+    if (!rate) continue
+    let fteWeeks = 0
+    for (let off = 0; off < o.durationWeeks; off++) fteWeeks += a.fte[String(off)] || 0
+    cost += fteWeeks * rate
+  }
+  return cost
+}
+
+export interface MarginTotals {
+  weightedRevenue: number
+  weightedCost: number
+  weightedMargin: number // expected revenue − expected cost
+  bookedRevenue: number
+  bookedCost: number
+  bookedMargin: number
+  blendedMarginPct: number // (weighted + booked margin) ÷ (weighted + booked revenue)
+  internalCost: number // pure investment, no revenue
+}
+
+export function marginTotals(state: ForecastState): MarginTotals {
+  let weightedRevenue = 0
+  let weightedCost = 0
+  let bookedRevenue = 0
+  let bookedCost = 0
+  let internalCost = 0
+  for (const o of state.opportunities) {
+    const cost = oppCost(o, state.roster)
+    if (o.type === 'internal') {
+      internalCost += cost
+      continue
+    }
+    if (o.booking === 'signed') {
+      bookedRevenue += o.dealValue || 0
+      bookedCost += cost
+    } else {
+      const p = effectiveProbability(state.stages, o.stageId, o.probabilityOverride)
+      weightedRevenue += (o.dealValue || 0) * p
+      weightedCost += cost * p
+    }
+  }
+  const weightedMargin = weightedRevenue - weightedCost
+  const bookedMargin = bookedRevenue - bookedCost
+  const rev = weightedRevenue + bookedRevenue
+  return {
+    weightedRevenue,
+    weightedCost,
+    weightedMargin,
+    bookedRevenue,
+    bookedCost,
+    bookedMargin,
+    blendedMarginPct: rev ? (weightedMargin + bookedMargin) / rev : 0,
+    internalCost,
+  }
+}
+
 export interface RoleRevenue {
   role: string
   deals: number
@@ -433,6 +503,7 @@ export interface PersonUtilization {
   overWeeks: number // weeks expected-over capacity
   weighted: number // influenced weighted pipeline $
   booked: number // influenced booked $
+  cost: number // this person's staffing cost (expected: signed full, forecast × close %)
   deals: number
 }
 
@@ -452,6 +523,7 @@ export function energyUtilization(state: ForecastState, weeks: string[]): Person
     // so per-person figures add up to the pipeline instead of double-counting.
     let weighted = 0
     let booked = 0
+    let cost = 0
     const deals = new Set<string>()
     for (const o of state.opportunities) {
       const mine = o.assignments.filter((a) => a.group === 'energy' && a.personId === p.id).length
@@ -460,6 +532,17 @@ export function energyUtilization(state: ForecastState, weeks: string[]): Person
       deals.add(o.id)
       weighted += (oppWeightedRevenue(state, o) * mine) / n
       booked += (oppBookedRevenue(o) * mine) / n
+      // This person's staffing cost on the deal = their FTE-weeks × their rate,
+      // weighted the same way as revenue (signed full, forecast × close %).
+      // Internal projects carry no revenue here, so they're excluded from margin.
+      if (p.costRate && o.type !== 'internal') {
+        let fteWeeks = 0
+        for (const a of o.assignments.filter((a) => a.personId === p.id)) {
+          for (let off = 0; off < o.durationWeeks; off++) fteWeeks += a.fte[String(off)] || 0
+        }
+        const prob = o.booking === 'signed' ? 1 : effectiveProbability(state.stages, o.stageId, o.probabilityOverride)
+        cost += fteWeeks * p.costRate * prob
+      }
     }
     out.push({
       person: p,
@@ -472,6 +555,7 @@ export function energyUtilization(state: ForecastState, weeks: string[]): Person
       overWeeks: load?.overWeeks.length ?? 0,
       weighted,
       booked,
+      cost,
       deals: deals.size,
     })
   }
