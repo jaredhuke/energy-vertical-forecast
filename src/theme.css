@@ -26,7 +26,7 @@
 
   --good: #0e7a4e;
   --warn: #9a5b00;
-  --bad: #d4592c;            /* orange-red — warmer than a true red to avoid colour vibration against the blues/greens */
+  --bad: #ef6a1f;            /* bright warm orange — over-capacity / short (warmer & brighter than burnt orange, low vibration vs blue/green) */
 
   --r-sm: 6px;
   --r: 10px;
@@ -385,6 +385,10 @@ a { color: var(--blue); }
 .util-grid .ru-stats .ru-under { color: var(--blue); }
 .util-grid td.ru-cell { text-align: center; height: 28px; padding: 0; font-variant-numeric: tabular-nums; color: var(--text); }
 .util-grid td.ru-cell .ru-over-num { font-weight: 700; }
+/* Over-capacity / short: an inset ring (a SHAPE cue, present-vs-absent) marks
+   it independent of colour vision — replaces the inline "!" so digits stay
+   clean and legible. Colorblind-safe per the UX law. */
+.util-grid td.ru-cell.over { box-shadow: inset 0 0 0 2px var(--bad); }
 /* Year boundary: stronger divider + the year itself as the column sub-label. */
 .util-grid th.ys, .util-grid td.ys { border-left: 2px solid var(--border-strong); }
 .util-grid th.ru-wk .wkdate.yr { color: var(--text); font-weight: 650; }

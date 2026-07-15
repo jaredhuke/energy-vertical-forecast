@@ -9,7 +9,7 @@ const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', '
 // Blue = spare capacity (room), green = well-used, orange = short (demand > capacity).
 const SPARE = '91, 140, 255'
 const OK = '46, 176, 120'
-const SHORT = '224, 114, 66'
+const SHORT = '246, 132, 58' // bright warm orange
 
 /** Fill = demand ÷ capacity. Capacity 0 with demand = fully short. */
 function fillOf(c: RoleCapacityCell): number {
@@ -152,14 +152,14 @@ export function CapacityView() {
                       return (
                         <td
                           key={i}
-                          className="ru-cell"
+                          className={`ru-cell${isShort ? ' over' : ''}`}
                           style={cellStyle(cell, target)}
                           title={cell.demand > 0 || cell.capacity > 0
                             ? `${c.title}: demand ${fmt(cell.demand)} FTE vs capacity ${fmt(cell.capacity)}${cell.capacity > 0 ? ` (${Math.round(f * 100)}%)` : ''}${isShort ? ` — SHORT ${fmt(cell.capacity > 0 ? cell.short : cell.demand)} FTE` : ''}`
                             : `${c.title}: no demand`}
                         >
                           {cell.demand > 0 ? (
-                            <span className={isShort ? 'ru-over-num' : ''}>{cell.capacity > 0 ? Math.round(f * 100) : fmt(cell.demand)}{isShort ? '!' : ''}</span>
+                            <span className={isShort ? 'ru-over-num' : ''}>{cell.capacity > 0 ? Math.round(f * 100) : fmt(cell.demand)}</span>
                           ) : null}
                         </td>
                       )

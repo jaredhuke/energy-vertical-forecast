@@ -12,7 +12,7 @@ import { isoWeekNum, weekLabel, weeksThroughYear } from '../lib/weeks'
 import { fmtMoneyFull, fmtPct } from '../lib/format'
 
 const BAND_RGB: Record<'over' | 'on' | 'under', string> = {
-  over: '224, 114, 66', // orange-red (matches the heatmap; low vibration)
+  over: '246, 132, 58', // bright warm orange (matches the heatmap; low vibration)
   on: '46, 176, 120',
   under: '91, 140, 255',
 }
@@ -139,11 +139,11 @@ export function PersonDetail({ person, onClose }: { person: Person; onClose?: ()
                 {row.weekly.map((c, i) => (
                   <td
                     key={i}
-                    className="ru-cell"
+                    className={`ru-cell${c.util > 1.02 ? ' over' : ''}`}
                     style={cellStyle(c.util, c.certainty, c.committed, target)}
                     title={c.committed ? `${weekLabel(weeks[i])}: ${Math.round(c.util * 100)}% forward · ${c.committed.toFixed(2)} FTE at ${Math.round(c.certainty * 100)}% likely` : `${weekLabel(weeks[i])}: idle`}
                   >
-                    {c.committed > 0 ? <span className={c.util > 1.02 ? 'ru-over-num' : ''}>{Math.round(c.util * 100)}{c.util > 1.02 ? '!' : ''}</span> : null}
+                    {c.committed > 0 ? <span className={c.util > 1.02 ? 'ru-over-num' : ''}>{Math.round(c.util * 100)}</span> : null}
                   </td>
                 ))}
               </tr>
