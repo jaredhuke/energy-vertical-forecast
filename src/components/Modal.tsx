@@ -3,7 +3,7 @@ import { useEffect, useRef, type ReactNode } from 'react'
 /** Lightweight accessible modal: Escape + backdrop-click to close, body scroll
  *  locked while open, keyboard focus moved into the first field on open,
  *  trapped while open, and restored to the invoking element on close. */
-export function Modal({ onClose, children }: { onClose: () => void; children: ReactNode }) {
+export function Modal({ onClose, children, wide }: { onClose: () => void; children: ReactNode; wide?: boolean }) {
   const shellRef = useRef<HTMLDivElement>(null)
   // Keep a live ref to onClose so the key handler never needs it as a dep
   // (a changing onClose must NOT re-run the focus effect — that steals focus
@@ -62,7 +62,7 @@ export function Modal({ onClose, children }: { onClose: () => void; children: Re
         if (e.target === e.currentTarget) onClose()
       }}
     >
-      <div className="modal-shell" role="dialog" aria-modal="true" tabIndex={-1} ref={shellRef}>
+      <div className={`modal-shell${wide ? ' wide' : ''}`} role="dialog" aria-modal="true" tabIndex={-1} ref={shellRef}>
         {children}
       </div>
     </div>

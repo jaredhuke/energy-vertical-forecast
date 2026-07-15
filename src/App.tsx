@@ -295,7 +295,7 @@ export default function App() {
       )}
 
       {selectedPerson && (
-        <Modal onClose={() => selectPerson(null)}>
+        <Modal wide onClose={() => selectPerson(null)}>
           <PersonDetail key={selectedPerson.id} person={selectedPerson} onClose={() => selectPerson(null)} />
         </Modal>
       )}
