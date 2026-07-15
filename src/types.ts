@@ -51,6 +51,19 @@ export type BookingStatus = 'forecast' | 'signed'
  *  funnel stage, deal value, or revenue. */
 export type ProjectType = 'external' | 'internal'
 
+/** How the team's time on a project is classified for the "where our time
+ *  goes" split: billable client delivery, internal IP/offering build, or
+ *  client-partner / business-development relationship work. */
+export type WorkType = 'billable' | 'ip' | 'partner'
+export const WORK_TYPES: { id: WorkType; label: string; hint: string }[] = [
+  { id: 'billable', label: 'Billable', hint: 'Client-billable delivery' },
+  { id: 'ip', label: 'IP / Offering', hint: 'Internal product / IP build' },
+  { id: 'partner', label: 'Client-partner', hint: 'Business development / partnering' },
+]
+
+/** Whether the pursuit is with a brand-new customer or an existing one. */
+export type CustomerType = 'new' | 'existing'
+
 /** A single sales pursuit or internal project being forecast. */
 export interface Opportunity {
   id: string
@@ -65,6 +78,10 @@ export interface Opportunity {
   dealValue?: number
   /** forecast (weighted pipeline) vs signed (actual booked revenue) */
   booking?: BookingStatus
+  /** how the team's time on this project is classified (default: billable) */
+  workType?: WorkType
+  /** new vs existing customer (default: existing) — for the pipeline split */
+  customerType?: CustomerType
   /** Monday-of-week key 'YYYY-MM-DD' for week offset 0 */
   startWeek: string
   durationWeeks: number

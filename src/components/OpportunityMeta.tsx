@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { useStore } from '../store/useStore'
 import type { Opportunity } from '../types'
+import { WORK_TYPES } from '../types'
+import { oppCustomerType, oppWorkType } from '../lib/analytics'
 import { effectiveProbability } from '../lib/funnel'
 import { isoWeekNum, weekLabel } from '../lib/weeks'
 import { fmtMoneyFull } from '../lib/format'
@@ -64,6 +66,14 @@ export function OpportunityMeta({ opp, onClose }: { opp: Opportunity; onClose?: 
           <div className="seg">
             <button className={!internal ? 'on' : ''} aria-pressed={!internal} onClick={() => update(opp.id, { type: 'external' })}>External</button>
             <button className={internal ? 'on' : ''} aria-pressed={internal} onClick={() => update(opp.id, { type: 'internal' })}>Internal</button>
+          </div>
+        </div>
+        <div className="field" title="How the team's time on this project is classified — for the 'where our time goes' split">
+          <span>Work type</span>
+          <div className="seg">
+            {WORK_TYPES.map((wt) => (
+              <button key={wt.id} className={oppWorkType(opp) === wt.id ? 'on' : ''} aria-pressed={oppWorkType(opp) === wt.id} title={wt.hint} onClick={() => update(opp.id, { workType: wt.id })}>{wt.label}</button>
+            ))}
           </div>
         </div>
         {!internal && (
@@ -138,6 +148,13 @@ export function OpportunityMeta({ opp, onClose }: { opp: Opportunity; onClose?: 
               <div className="seg">
                 <button className={opp.booking !== 'signed' ? 'on' : ''} aria-pressed={opp.booking !== 'signed'} onClick={() => update(opp.id, { booking: 'forecast' })}>Forecast</button>
                 <button className={opp.booking === 'signed' ? 'on' : ''} aria-pressed={opp.booking === 'signed'} onClick={() => update(opp.id, { booking: 'signed' })}>Signed</button>
+              </div>
+            </div>
+            <div className="field" title="Brand-new customer vs an existing one — for the pipeline split">
+              <span>Customer</span>
+              <div className="seg">
+                <button className={oppCustomerType(opp) === 'new' ? 'on' : ''} aria-pressed={oppCustomerType(opp) === 'new'} onClick={() => update(opp.id, { customerType: 'new' })}>New</button>
+                <button className={oppCustomerType(opp) === 'existing' ? 'on' : ''} aria-pressed={oppCustomerType(opp) === 'existing'} onClick={() => update(opp.id, { customerType: 'existing' })}>Existing</button>
               </div>
             </div>
           </>

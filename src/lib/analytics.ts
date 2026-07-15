@@ -1,6 +1,12 @@
-import type { ForecastState, Group, Opportunity, Person } from '../types'
+import type { CustomerType, ForecastState, Group, Opportunity, Person, WorkType } from '../types'
+import { WORK_TYPES } from '../types'
 import { effectiveProbability } from './funnel'
 import { addWeeks, parseKey, weekKeyOf, weeksBetween, weekRange } from './weeks'
+
+/** How a project's team-time is classified (default: billable). */
+export const oppWorkType = (o: Opportunity): WorkType => o.workType ?? 'billable'
+/** New vs existing customer (default: existing). */
+export const oppCustomerType = (o: Opportunity): CustomerType => o.customerType ?? 'existing'
 
 /** The Monday-of-week an opportunity starts on. In-app data is always
  *  Monday-keyed, but imported / hand-edited JSON might carry a mid-week date;
@@ -700,4 +706,44 @@ export function rosterUtilization(
 /** Utilization band vs target: over-capacity (over), below-target (under), else on. */
 export function utilBand(util: number, target: number): 'over' | 'on' | 'under' {
   return util > OVER_CAP ? 'over' : util < target ? 'under' : 'on'
+}
+
+// ---------------------------------------------------------------------------
+// Where our time goes — team FTE-weeks split by work type (billable / IP /
+// client-partner) over the active/staffed window. Expected mode weights each
+// week by the deal's close % (signed & internal = 100%); planned = raw FTE.
+// ---------------------------------------------------------------------------
+export interface WorkTypeSlice {
+  workType: WorkType
+  label: string
+  fteWeeks: number // team FTE-weeks in this bucket over the window
+  share: number // fraction of total (0..1)
+}
+
+export function timeSplitByWorkType(
+  state: ForecastState,
+  weeks: string[],
+  mode: 'expected' | 'planned' = 'expected',
+  statsWeeks?: number,
+): { slices: WorkTypeSlice[]; total: number } {
+  const win = statsWeeks ?? activeHorizonWeeks(state, weeks)
+  const idx = new Map(weeks.map((w, i) => [w, i]))
+  const buckets: Record<WorkType, number> = { billable: 0, ip: 0, partner: 0 }
+  for (const o of state.opportunities) {
+    const cert = mode === 'planned' ? 1 : oppCertainty(state, o)
+    const base = oppStartMonday(o)
+    const wt = oppWorkType(o)
+    for (const a of o.assignments) {
+      for (let off = 0; off < o.durationWeeks; off++) {
+        const fte = a.fte[String(off)] || 0
+        if (!fte) continue
+        const i = idx.get(addWeeks(base, off))
+        if (i == null || i >= win) continue // only within the active/staffed window
+        buckets[wt] += fte * cert
+      }
+    }
+  }
+  const total = buckets.billable + buckets.ip + buckets.partner
+  const slices = WORK_TYPES.map((t) => ({ workType: t.id, label: t.label, fteWeeks: buckets[t.id], share: total ? buckets[t.id] / total : 0 }))
+  return { slices, total }
 }

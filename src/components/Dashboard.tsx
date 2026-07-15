@@ -14,6 +14,7 @@ import {
   roleDemandVsCapacity,
   rolesImpacted,
   rosterUtilization,
+  timeSplitByWorkType,
   totals,
   unstaffedRoles,
   weightedTotal,
@@ -22,6 +23,10 @@ import { stageName } from '../lib/funnel'
 import { weekLabel, weeksThroughYear } from '../lib/weeks'
 import { fmtMoney, fmtMoneyFull, fmtPct } from '../lib/format'
 import { HBars, Sparkline, WeeklyDemandChart } from './charts'
+import type { WorkType } from '../types'
+
+// Distinct hues for the "where our time goes" split.
+const WORK_COLOR: Record<WorkType, string> = { billable: 'var(--good)', ip: 'var(--purple)', partner: 'var(--warn)' }
 
 function Delta({ now, was, unit = '' }: { now: number; was: number | null; unit?: string }) {
   if (was == null) return <div className="delta flat">— no prior snapshot</div>
@@ -71,6 +76,7 @@ export function Dashboard() {
   const { weeks } = useMemo(() => horizon(opportunities), [opportunities])
   const demand = useMemo(() => demandByWeek(state, weeks), [state, weeks])
   const stack = useMemo(() => demandStackByWeek(state, weeks), [state, weeks])
+  const timeSplit = useMemo(() => timeSplitByWorkType(state, weeks), [state, weeks])
   const t = useMemo(() => totals(demand), [demand])
   const funnel = useMemo(() => funnelCounts(state), [state])
   const roles = useMemo(() => rolesImpacted(state), [state])
@@ -224,6 +230,33 @@ export function Dashboard() {
           <div className="empty">No opportunities yet. Add one under the Opportunities tab.</div>
         ) : (
           <WeeklyDemandChart weeks={stack} target={targetFte} />
+        )}
+      </div>
+
+      {/* Pillar 3 — how our time is split today: billable / IP / client-partner */}
+      <div className="card">
+        <div className="h-row">
+          <h2>Where our time goes</h2>
+          <span className="faint" style={{ fontSize: 11 }}>expected FTE across the staffed horizon · set each project's work type in Opportunities</span>
+        </div>
+        {timeSplit.total === 0 ? (
+          <div className="empty">No staffed time yet.</div>
+        ) : (
+          <>
+            <div style={{ display: 'flex', height: 24, borderRadius: 6, overflow: 'hidden', border: '1px solid var(--border)' }}>
+              {timeSplit.slices.filter((s) => s.fteWeeks > 0).map((s) => (
+                <div key={s.workType} style={{ width: `${s.share * 100}%`, background: WORK_COLOR[s.workType] }} title={`${s.label}: ${s.fteWeeks.toFixed(1)} FTE-weeks (${Math.round(s.share * 100)}%)`} />
+              ))}
+            </div>
+            <div className="row wrap" style={{ gap: 18, marginTop: 12 }}>
+              {timeSplit.slices.map((s) => (
+                <div key={s.workType} className="row" style={{ gap: 7 }}>
+                  <span style={{ width: 11, height: 11, borderRadius: 3, background: WORK_COLOR[s.workType], display: 'inline-block' }} />
+                  <span>{s.label} <b className="num">{Math.round(s.share * 100)}%</b> <span className="faint num">· {s.fteWeeks.toFixed(1)} FTE-wk</span></span>
+                </div>
+              ))}
+            </div>
+          </>
         )}
       </div>
 

@@ -25,6 +25,9 @@ import {
   oppCost,
   marginTotals,
   personTarget,
+  timeSplitByWorkType,
+  oppWorkType,
+  oppCustomerType,
 } from './analytics'
 import { addWeeks, weekKeyOf, mondayOf, dateKey, weekRange } from './weeks'
 
@@ -613,6 +616,44 @@ describe('per-person target utilization', () => {
     const row = rosterUtilization(withTarget, WEEKS, 0.8)[0]
     expect(row.target).toBe(0.5)
     expect(row.underWeeks).toBe(0)
+  })
+})
+
+// ===========================================================================
+// WHERE OUR TIME GOES — team FTE-weeks split by work type (expected-weighted).
+// Golden: o1 signed → 3.0 FTE-wk, o2 forecast@50% → 1.6×0.5 = 0.8, o3 internal
+// → 0.5. Total expected = 4.3.
+// ===========================================================================
+describe('timeSplitByWorkType + work/customer helpers', () => {
+  it('defaults: everything is billable, existing customer', () => {
+    expect(oppWorkType(opportunities[0])).toBe('billable')
+    expect(oppCustomerType(opportunities[0])).toBe('existing')
+    expect(oppWorkType({ ...opportunities[0], workType: 'ip' })).toBe('ip')
+    expect(oppCustomerType({ ...opportunities[0], customerType: 'new' })).toBe('new')
+  })
+  it('with no tags, all time is billable (expected FTE-weeks)', () => {
+    const { slices, total } = timeSplitByWorkType(state, WEEKS)
+    expect(total).toBeCloseTo(4.3, 6)
+    expect(slices.find((s) => s.workType === 'billable')!.fteWeeks).toBeCloseTo(4.3, 6)
+    expect(slices.find((s) => s.workType === 'ip')!.fteWeeks).toBe(0)
+    expect(slices.find((s) => s.workType === 'partner')!.fteWeeks).toBe(0)
+  })
+  it('buckets each project by its work type, expected-weighted', () => {
+    const st: ForecastState = {
+      ...state,
+      opportunities: [
+        { ...opportunities[0], workType: 'billable' }, // signed → 3.0
+        { ...opportunities[1], workType: 'ip' }, // forecast 50% → 0.8
+        { ...opportunities[2], workType: 'partner' }, // internal → 0.5
+      ],
+    }
+    const { slices } = timeSplitByWorkType(st, WEEKS)
+    const g = (w: string) => slices.find((s) => s.workType === w)!.fteWeeks
+    expect(g('billable')).toBeCloseTo(3.0, 6)
+    expect(g('ip')).toBeCloseTo(0.8, 6)
+    expect(g('partner')).toBeCloseTo(0.5, 6)
+    // shares sum to 1
+    expect(slices.reduce((s, x) => s + x.share, 0)).toBeCloseTo(1, 6)
   })
 })
 
