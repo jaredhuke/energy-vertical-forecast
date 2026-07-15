@@ -3,7 +3,7 @@
   "name": "Energy Vertical Forecast",
   "domain": "Energy vertical / presales capacity + revenue",
   "phase": "build",
-  "status": "Shipped: resource-loaded Gantt (fluid slide/resize, resizable Project/role column), signed-vs-forecast stacked demand chart (green committed floor + likelihood-opacity forecast), multi-year utilization horizon, energy-team utilization + pull-through revenue. Collaboration via a consolidated public/data/dataset.json read at runtime + per-file (roster/opportunity) store for a OneDrive-synced SharePoint shared folder. Hosting target = PUBLIC GitLab Pages at git.epam.com (.gitlab-ci.yml ready) — BLOCKED on creating the git.epam.com project; GitHub is a private mirror only. World-class UX/logic audit landed (undo toast, cross-project over-capacity rings, wheel-guards, focus-trap, zero-double-height Data menu). Excel-import template + wizard in progress.",
+  "status": "Shipped: resource-loaded Gantt (fluid slide/resize, resizable Project/role column), signed-vs-forecast stacked demand chart (green committed floor + likelihood-opacity forecast), multi-year utilization horizon, active-horizon Expected/Planned utilization + a Capacity (demand-vs-capacity-by-role) view, per-capita pull-through revenue split, and a cost & margin layer that is HIDDEN BY DEFAULT (opt-in toggle; wires the per-person costRate into oppCost / marginTotals / per-person+role margin). Data accuracy is build-gated by 54 hand-computed golden tests (tsc + vitest + vite build). Collaboration via a consolidated public/data/dataset.json read at runtime + per-file (roster/opportunity) store for a OneDrive-synced SharePoint shared folder. Hosting target = PUBLIC GitLab Pages at git.epam.com (.gitlab-ci.yml ready) — BLOCKED on creating the git.epam.com project; GitHub is a private mirror only. World-class UX/logic audit landed (undo toast, cross-project over-capacity rings, wheel-guards, focus-trap, no-reflow toolbars/tabs). Excel-import template + wizard in progress.",
   "goals": [
     "Forecast weekly FTE across presales opportunities on a resource-loaded Gantt",
     "Weight demand by funnel stage (close %) and split Energy team vs Delivery team",
@@ -13,7 +13,7 @@
   "tokenBurn": {
     "estCloudTokens": 6000000,
     "estUSD": 72,
-    "basis": "estimate — initial build 2026-07-09 (~3.0M) + extended session 2026-07-15 (~3.0M: forecast-model + chart rework, multi-year horizon, collaboration/hosting, world-class UX audit) (claude-opus-4-8); not metered. Per-session ledger: ORBIT R-SYS-0265/0266/0268/0272 + R-SYS-0314 (TB-000140).",
+    "basis": "estimate — initial build 2026-07-09 (~3.0M) + extended session 2026-07-15 (~3.0M: forecast-model + chart rework, multi-year horizon, collaboration/hosting, world-class UX audit, utilization/capacity redesign, revenue split, cost & margin) (claude-opus-4-8); not metered. Per-session ledger: ORBIT R-SYS-0265/0266/0268/0272 + R-SYS-0314..0327 (latest cost & margin R-SYS-0327 / TB-000152).",
     "asOf": "2026-07-15",
     "measured": false
   },
