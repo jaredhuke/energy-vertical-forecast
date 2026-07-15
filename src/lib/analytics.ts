@@ -779,3 +779,62 @@ export function pipelineByCustomerType(state: ForecastState): CustomerPipeline[]
     { customerType: 'existing', label: 'Existing customer', ...b.existing },
   ]
 }
+
+// ---------------------------------------------------------------------------
+// Look ahead — month by month, is expected demand OVER capacity (short people →
+// find supply / hire) or UNDER the billable target (short work → fill pipeline)?
+// ---------------------------------------------------------------------------
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+const monthLabel = (ym: string) => {
+  const [y, m] = ym.split('-')
+  return `${MONTHS[Number(m) - 1]} ${y}`
+}
+
+export type OutlookStatus = 'short-people' | 'short-work' | 'on-track'
+export interface MonthOutlook {
+  month: string // 'YYYY-MM'
+  label: string // 'Aug 2026'
+  demand: number // average weekly EXPECTED FTE demand that month
+  capacity: number // total roster capacity (FTE)
+  target: number // billable target FTE (Σ capacity × per-person target)
+  status: OutlookStatus
+  gap: number // FTE: short-people = demand − capacity; short-work = target − demand
+}
+
+export function supplyDemandOutlook(
+  state: ForecastState,
+  weeks: string[],
+  globalTarget: number,
+): { months: MonthOutlook[]; capacity: number; target: number } {
+  const capacity = state.roster.reduce((s, p) => s + (p.capacity || 0), 0)
+  const target = state.roster.reduce((s, p) => s + (p.capacity || 0) * personTarget(p, globalTarget), 0)
+  const demand = demandByWeek(state, weeks)
+  const win = Math.min(activeHorizonWeeks(state, weeks), weeks.length)
+  const byMonth = new Map<string, number[]>()
+  for (let i = 0; i < win; i++) {
+    const mo = weeks[i].slice(0, 7)
+    let arr = byMonth.get(mo)
+    if (!arr) {
+      arr = []
+      byMonth.set(mo, arr)
+    }
+    arr.push(demand[i].weightedEnergy + demand[i].weightedDelivery)
+  }
+  const months = [...byMonth.entries()].map(([mo, vals]) => {
+    const d = vals.reduce((a, b) => a + b, 0) / vals.length
+    let status: OutlookStatus
+    let gap: number
+    if (d > capacity + 1e-9) {
+      status = 'short-people'
+      gap = d - capacity
+    } else if (d < target - 1e-9) {
+      status = 'short-work'
+      gap = target - d
+    } else {
+      status = 'on-track'
+      gap = 0
+    }
+    return { month: mo, label: monthLabel(mo), demand: d, capacity, target, status, gap }
+  })
+  return { months, capacity, target }
+}

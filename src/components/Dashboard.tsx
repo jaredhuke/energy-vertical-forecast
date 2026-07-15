@@ -14,6 +14,8 @@ import {
   roleDemandVsCapacity,
   rolesImpacted,
   rosterUtilization,
+  supplyDemandOutlook,
+  type OutlookStatus,
   timeSplitByWorkType,
   totals,
   unstaffedRoles,
@@ -27,6 +29,13 @@ import type { WorkType } from '../types'
 
 // Distinct hues for the "where our time goes" split.
 const WORK_COLOR: Record<WorkType, string> = { billable: 'var(--good)', ip: 'var(--purple)', partner: 'var(--warn)' }
+
+// Look-ahead verdicts: over capacity = need people; under target = need work.
+const OUTLOOK_STYLE: Record<OutlookStatus, { color: string; label: string; sign: string }> = {
+  'short-people': { color: 'var(--bad)', label: 'short people', sign: '▲' },
+  'short-work': { color: 'var(--blue)', label: 'short work', sign: '▼' },
+  'on-track': { color: 'var(--good)', label: 'on track', sign: '✓' },
+}
 
 function Delta({ now, was, unit = '' }: { now: number; was: number | null; unit?: string }) {
   if (was == null) return <div className="delta flat">— no prior snapshot</div>
@@ -77,6 +86,7 @@ export function Dashboard() {
   const demand = useMemo(() => demandByWeek(state, weeks), [state, weeks])
   const stack = useMemo(() => demandStackByWeek(state, weeks), [state, weeks])
   const timeSplit = useMemo(() => timeSplitByWorkType(state, weeks), [state, weeks])
+  const outlook = useMemo(() => supplyDemandOutlook(state, utilWeeks, target), [state, utilWeeks, target])
   const t = useMemo(() => totals(demand), [demand])
   const funnel = useMemo(() => funnelCounts(state), [state])
   const roles = useMemo(() => rolesImpacted(state), [state])
@@ -230,6 +240,31 @@ export function Dashboard() {
           <div className="empty">No opportunities yet. Add one under the Opportunities tab.</div>
         ) : (
           <WeeklyDemandChart weeks={stack} target={targetFte} />
+        )}
+      </div>
+
+      {/* Pillar 1 — look ahead: each month, short people (over capacity) or short work (under target)? */}
+      <div className="card">
+        <div className="h-row">
+          <h2>Look ahead — supply vs demand</h2>
+          <span className="faint" style={{ fontSize: 11 }}>expected demand vs capacity {outlook.capacity.toFixed(1)} · target {outlook.target.toFixed(1)} FTE · ▲ over = hire/find people · ▼ under = fill pipeline</span>
+        </div>
+        {outlook.months.length === 0 ? (
+          <div className="empty">No staffed months yet.</div>
+        ) : (
+          <div className="row" style={{ gap: 8, overflowX: 'auto', paddingBottom: 2 }}>
+            {outlook.months.map((mo) => {
+              const st = OUTLOOK_STYLE[mo.status]
+              return (
+                <div key={mo.month} title={`${mo.label}: expected demand ${mo.demand.toFixed(1)} FTE vs capacity ${mo.capacity.toFixed(1)} / target ${mo.target.toFixed(1)}`}
+                  style={{ flex: '0 0 auto', minWidth: 96, border: '1px solid var(--border)', borderTop: `3px solid ${st.color}`, borderRadius: 'var(--r-sm)', padding: '8px 10px', background: 'var(--surface)' }}>
+                  <div className="num" style={{ fontSize: 12, fontWeight: 600 }}>{mo.label}</div>
+                  <div className="num" style={{ fontSize: 15, fontWeight: 700 }}>{mo.demand.toFixed(1)}<span className="faint" style={{ fontWeight: 400, fontSize: 11 }}> FTE</span></div>
+                  <div style={{ fontSize: 11, fontWeight: 600, color: st.color, marginTop: 2 }}>{st.sign} {mo.status === 'on-track' ? 'on track' : `${mo.gap.toFixed(1)} ${st.label}`}</div>
+                </div>
+              )
+            })}
+          </div>
         )}
       </div>
 

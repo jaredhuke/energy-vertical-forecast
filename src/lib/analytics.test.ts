@@ -29,6 +29,7 @@ import {
   oppWorkType,
   oppCustomerType,
   pipelineByCustomerType,
+  supplyDemandOutlook,
 } from './analytics'
 import { addWeeks, weekKeyOf, mondayOf, dateKey, weekRange } from './weeks'
 
@@ -681,6 +682,33 @@ describe('pipelineByCustomerType', () => {
     const rows = pipelineByCustomerType(st)
     expect(rows.find((r) => r.customerType === 'new')!.booked).toBe(1_000_000) // o1 → new
     expect(rows.find((r) => r.customerType === 'existing')!.anticipated).toBeCloseTo(1_000_000, 6) // o2 stays
+  })
+})
+
+// ===========================================================================
+// LOOK AHEAD — supply vs demand per month (short people vs short work).
+// ===========================================================================
+describe('supplyDemandOutlook', () => {
+  it('capacity + target come from the roster', () => {
+    const { capacity, target } = supplyDemandOutlook(state, WEEKS, 0.8)
+    expect(capacity).toBeCloseTo(2.5, 6) // 1.0 + 0.5 + 1.0
+    expect(target).toBeCloseTo(2.0, 6) // 2.5 × 0.8
+  })
+  it('short-work when demand < target; short-people when demand > capacity', () => {
+    const p: Person = { id: 'p', name: 'P', group: 'energy', level: '', title: '', role: 'R', capacity: 1.0 }
+    const mk = (fte: number): Opportunity => ({
+      id: 'o', name: 'o', client: '', type: 'external', booking: 'signed', stageId: 'closed',
+      dealValue: 0, startWeek: '2026-01-05', durationWeeks: 4,
+      assignments: [{ id: 'a', personId: 'p', role: 'R', group: 'energy', fte: { '0': fte, '1': fte, '2': fte, '3': fte } }],
+    })
+    // demand 0.5 < target 0.8 → short-work, gap 0.3
+    const under = supplyDemandOutlook({ roster: [p], stages, opportunities: [mk(0.5)], snapshots: [], editor: 't' }, WEEKS, 0.8)
+    expect(under.months[0].status).toBe('short-work')
+    expect(under.months[0].gap).toBeCloseTo(0.3, 6)
+    // demand 1.5 > capacity 1.0 → short-people, gap 0.5
+    const over = supplyDemandOutlook({ roster: [p], stages, opportunities: [mk(1.5)], snapshots: [], editor: 't' }, WEEKS, 0.8)
+    expect(over.months[0].status).toBe('short-people')
+    expect(over.months[0].gap).toBeCloseTo(0.5, 6)
   })
 })
 
