@@ -86,7 +86,7 @@ export function CapacityView() {
       <div className="card">
         <div className="h-row">
           <h2>Demand vs capacity — by role</h2>
-          <div className="row wrap" style={{ gap: 14 }}>
+          <div className="ctl-row">
             <div className="seg" title="Expected = FTE × close %. Planned = raw FTE if every deal lands.">
               <button className={mode === 'expected' ? 'on' : ''} aria-pressed={mode === 'expected'} onClick={() => setMode('expected')}>Expected</button>
               <button className={mode === 'planned' ? 'on' : ''} aria-pressed={mode === 'planned'} onClick={() => setMode('planned')}>Planned</button>
@@ -95,10 +95,12 @@ export function CapacityView() {
               <button className={grain === 'week' ? 'on' : ''} aria-pressed={grain === 'week'} onClick={() => setGrain('week')}>Weekly</button>
               <button className={grain === 'month' ? 'on' : ''} aria-pressed={grain === 'month'} onClick={() => setGrain('month')}>Monthly</button>
             </div>
-            <span className="ru-legend"><span className="sw" style={{ background: `rgba(${SPARE},0.6)` }} /> Spare</span>
-            <span className="ru-legend"><span className="sw" style={{ background: `rgba(${OK},0.6)` }} /> Well used</span>
-            <span className="ru-legend"><span className="sw" style={{ background: `rgba(${SHORT},0.6)` }} /> Short</span>
           </div>
+        </div>
+        <div className="legend-strip">
+          <span className="ru-legend"><span className="sw" style={{ background: `rgba(${SPARE},0.6)` }} /> Spare</span>
+          <span className="ru-legend"><span className="sw" style={{ background: `rgba(${OK},0.6)` }} /> Well used</span>
+          <span className="ru-legend"><span className="sw" style={{ background: `rgba(${SHORT},0.6)`, boxShadow: `inset 0 0 0 1.5px var(--bad)` }} /> Short (ringed)</span>
         </div>
 
         <div className="kpis" style={{ marginBottom: 14 }}>

@@ -130,7 +130,7 @@ export function UtilizationView() {
         this reads from the same data, internal projects included). Toggle <b>Expected</b> (FTE × close %, risk-adjusted —
         1&nbsp;FTE on a 50%-likely deal reads 50%) vs <b>Planned</b> (raw FTE if every deal lands — 1&nbsp;FTE reads 100%);
         signed &amp; internal count at 100% either way. Bands vs your <b>utilization target</b>: below = under-utilized (blue),
-        target→capacity = on target (green), over capacity = over-allocated (orange, marked&nbsp;!). Colour strength = booking
+        target→capacity = on target (green), over capacity = over-allocated (orange, ringed). Colour strength = booking
         certainty. Averages cover the <b>staffed horizon</b> (through the last booked week) so empty far-future weeks don't
         drag them down. Click a name for that person's detail.
       </div>
@@ -138,7 +138,8 @@ export function UtilizationView() {
       <div className="card" ref={cardRef}>
         <div className="h-row">
           <h2>Utilization heatmap — through {throughYear}</h2>
-          <div className="row wrap" style={{ gap: 14 }}>
+          {/* Button cluster NEVER wraps (no double-height); legends live in their own strip below. */}
+          <div className="ctl-row">
             <div className="seg" title="Expected = FTE × close % (risk-adjusted). Planned = raw FTE if every deal lands.">
               <button className={mode === 'expected' ? 'on' : ''} aria-pressed={mode === 'expected'} onClick={() => setMode('expected')}>Expected</button>
               <button className={mode === 'planned' ? 'on' : ''} aria-pressed={mode === 'planned'} onClick={() => setMode('planned')}>Planned</button>
@@ -147,7 +148,7 @@ export function UtilizationView() {
               <button className={grain === 'week' ? 'on' : ''} aria-pressed={grain === 'week'} onClick={() => setGrain('week')}>Weekly</button>
               <button className={grain === 'month' ? 'on' : ''} aria-pressed={grain === 'month'} onClick={() => setGrain('month')}>Monthly</button>
             </div>
-            <div className="row" style={{ gap: 8 }}>
+            <div className="row" style={{ gap: 8, flex: '0 0 auto' }}>
               <span className="faint" style={{ fontSize: 12 }}>Target</span>
               <div className="stepper">
                 <button title="−5%" onClick={() => setTarget(target - 0.05)}>−</button>
@@ -155,11 +156,13 @@ export function UtilizationView() {
                 <button title="+5%" onClick={() => setTarget(target + 0.05)}>+</button>
               </div>
             </div>
-            <span className="ru-legend"><span className="sw" style={{ background: `rgba(${BAND_RGB.under},0.6)` }} /> Under {targetPct}%</span>
-            <span className="ru-legend"><span className="sw" style={{ background: `rgba(${BAND_RGB.on},0.6)` }} /> On target</span>
-            <span className="ru-legend"><span className="sw" style={{ background: `rgba(${BAND_RGB.over},0.6)`, boxShadow: `inset 0 0 0 1.5px var(--bad)` }} /> Over (ringed)</span>
-            <span className="faint" style={{ fontSize: 11 }}>opacity = certainty</span>
           </div>
+        </div>
+        <div className="legend-strip">
+          <span className="ru-legend"><span className="sw" style={{ background: `rgba(${BAND_RGB.under},0.6)` }} /> Under {targetPct}%</span>
+          <span className="ru-legend"><span className="sw" style={{ background: `rgba(${BAND_RGB.on},0.6)` }} /> On target</span>
+          <span className="ru-legend"><span className="sw" style={{ background: `rgba(${BAND_RGB.over},0.6)`, boxShadow: `inset 0 0 0 1.5px var(--bad)` }} /> Over (ringed)</span>
+          <span className="faint" style={{ fontSize: 11 }}>opacity = certainty</span>
         </div>
 
         <div className="kpis" style={{ marginBottom: 14 }}>

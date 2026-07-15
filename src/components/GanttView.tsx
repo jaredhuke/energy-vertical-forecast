@@ -252,12 +252,12 @@ export function GanttView() {
   return (
     <div className="card">
       <div className="h-row">
-        <h2>Timeline</h2>
-        <div className="row wrap" style={{ gap: 10 }}>
-          <span className="legend">
-            <span><span className="swatch energy" /> Energy team</span>
-            <span><span className="swatch delivery" /> Delivery team</span>
-          </span>
+        <h2>Timeline <span className="legend" style={{ fontWeight: 400, marginLeft: 10 }}>
+          <span><span className="swatch energy" /> Energy team</span>
+          <span><span className="swatch delivery" /> Delivery team</span>
+        </span></h2>
+        {/* Button cluster NEVER wraps to a second row (scrolls if truly cramped). */}
+        <div className="ctl-row">
           <div className="pan" role="group" aria-label="Slide the calendar">
             <button className="mini-btn" title="Slide 4 weeks earlier" aria-label="Slide earlier" onClick={() => panBy(-4)}>‹</button>
             <button className="mini-btn now" title="Jump to today" onClick={() => scrollToToday()}>Now</button>

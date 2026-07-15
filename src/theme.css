@@ -94,11 +94,14 @@ body {
 .brand .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--grad); display: inline-block; }
 .brand .sub { color: var(--text-faint); font-size: 12px; }
 
-.tabs { display: flex; gap: 4px; }
+/* Tabs never wrap to a second row and each label stays on one line (no
+   double-height tab); the strip scrolls sideways if it can't all fit. */
+.tabs { display: flex; gap: 4px; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+.tabs::-webkit-scrollbar { display: none; }
 .tab {
   background: transparent; border: 1px solid transparent; color: var(--text-dim);
   height: 30px; padding: 0 14px; border-radius: var(--r-sm); cursor: pointer; font-size: 13px; font-family: inherit;
-  display: inline-flex; align-items: center;
+  display: inline-flex; align-items: center; white-space: nowrap; flex: 0 0 auto; line-height: 1;
 }
 .tab:hover { color: var(--text); background: var(--surface-2); }
 .tab.active { color: var(--text); background: #ffffff; border-color: var(--border-strong); box-shadow: var(--shadow); }
@@ -152,6 +155,11 @@ label.field { display: flex; flex-direction: column; gap: 4px; font-size: 12px; 
 }
 .card h2 { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.6px; color: var(--text-dim); margin: 0 0 12px; }
 .card .h-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; flex-wrap: wrap; gap: 10px; }
+/* Toolbar button cluster: buttons NEVER wrap to a second row (scrolls sideways
+   if a window is truly tiny). Non-button legends go in .legend-strip below. */
+.ctl-row { display: flex; align-items: center; gap: 12px; flex-wrap: nowrap; min-width: 0; overflow-x: auto; padding-bottom: 2px; }
+.ctl-row .seg { flex: 0 0 auto; }
+.legend-strip { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; margin: -2px 0 12px; }
 .legend { flex-wrap: wrap; }
 .card .h-row h2 { margin: 0; }
 
