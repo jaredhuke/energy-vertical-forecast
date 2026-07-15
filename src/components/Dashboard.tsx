@@ -9,6 +9,7 @@ import {
   funnelCounts,
   horizon,
   personLoads,
+  personTarget,
   revenueTotals,
   roleDemandVsCapacity,
   rolesImpacted,
@@ -58,13 +59,14 @@ export function Dashboard() {
     [state, utilWeeks, target],
   )
   const overUtil = utilRows.filter((r) => r.peakUtil > 1.02)
-  const underUtil = utilRows.filter((r) => r.idleWeeks < utilWeeks.length && r.avgUtil < target).sort((a, b) => a.avgUtil - b.avgUtil)
+  const underUtil = utilRows.filter((r) => r.idleWeeks < utilWeeks.length && r.avgUtil < r.target).sort((a, b) => a.avgUtil - b.avgUtil)
   const idlePeople = utilRows.filter((r) => r.idleWeeks === utilWeeks.length)
   const unstaffed = useMemo(() => unstaffedRoles(state), [state])
   const targetPct = Math.round(target * 100)
-  // Team capacity target for the demand chart: total roster capacity × target %.
-  // e.g. 10 people at 1.0 capacity with an 80% target = 8.0 target FTE.
-  const targetFte = useMemo(() => roster.reduce((s, p) => s + (p.capacity || 0), 0) * target, [roster, target])
+  // Team capacity target for the demand chart: Σ each person's capacity × THEIR
+  // target (own target, or the global fallback). e.g. 10 people at 1.0 capacity
+  // and an 80% target = 8.0 target FTE.
+  const targetFte = useMemo(() => roster.reduce((s, p) => s + (p.capacity || 0) * personTarget(p, target), 0), [roster, target])
 
   const { weeks } = useMemo(() => horizon(opportunities), [opportunities])
   const demand = useMemo(() => demandByWeek(state, weeks), [state, weeks])
@@ -199,7 +201,7 @@ export function Dashboard() {
               {underUtil.slice(0, 6).map((r) => (
                 <button key={r.person.id} className="signal-row" onClick={() => selectPerson(r.person.id)} title={`Open ${r.person.name}`}>
                   <span className="signal-name">{r.person.name}{r.idleWeeks === utilWeeks.length ? <span className="faint"> · idle</span> : null}</span>
-                  <span className="num" style={{ color: 'var(--blue)' }}>{fmtPct(r.avgUtil)} avg <span className="faint">/ {targetPct}%</span></span>
+                  <span className="num" style={{ color: 'var(--blue)' }}>{fmtPct(r.avgUtil)} avg <span className="faint">/ {Math.round(r.target * 100)}% target</span></span>
                 </button>
               ))}
               {underUtil.length > 6 && <div className="faint" style={{ fontSize: 11, padding: '4px 2px' }}>+{underUtil.length - 6} more below {targetPct}%</div>}
@@ -215,7 +217,7 @@ export function Dashboard() {
           <div className="legend">
             <span><span className="swatch signed" /> Signed / committed</span>
             <span><span className="swatch forecast" /> Forecast</span>
-            <span style={{ color: 'var(--blue)' }}>— — Target {targetFte.toFixed(1)} FTE <span className="faint">({targetPct}% of {roster.length})</span></span>
+            <span style={{ color: 'var(--blue)' }} title="Σ each person's capacity × their target utilization">— — Target {targetFte.toFixed(1)} FTE <span className="faint">(billable capacity)</span></span>
           </div>
         </div>
         {opportunities.length === 0 ? (

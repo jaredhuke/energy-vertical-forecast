@@ -4,6 +4,7 @@ import type { ForecastState, Opportunity, Person } from '../types'
 import {
   oppBookedRevenue,
   oppWeightedRevenue,
+  personTarget,
   rosterUtilization,
   utilBand,
 } from '../lib/analytics'
@@ -42,7 +43,8 @@ export function PersonDetail({ person, onClose }: { person: Person; onClose?: ()
     () => rosterUtilization(state, weeks, target).find((r) => r.person.id === person.id),
     [state, weeks, target, person.id],
   )
-  const targetPct = Math.round(target * 100)
+  const pTarget = row?.target ?? personTarget(person, target) // this person's target (own, or global fallback)
+  const targetPct = Math.round(pTarget * 100)
 
   // Projects this person is staffed on, with their contribution.
   const projects = useMemo(() => {
@@ -87,6 +89,9 @@ export function PersonDetail({ person, onClose }: { person: Person; onClose?: ()
           <span className="faint" style={{ marginLeft: 10, fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>
             {person.role} · {person.level} · {person.group === 'energy' ? 'Energy' : 'Delivery'} · capacity {person.capacity.toFixed(1)}
           </span>
+          <span style={{ marginLeft: 10, fontWeight: 600, textTransform: 'none', letterSpacing: 0, color: 'var(--blue)' }}>
+            · target {targetPct}%{person.targetUtil == null && <span className="faint" style={{ fontWeight: 400 }}> (team default)</span>}
+          </span>
         </h2>
         <div className="row" style={{ gap: 8 }}>
           <button className="btn ghost sm" onClick={() => { selectPerson(null); setView('roster') }}>Edit in roster</button>
@@ -97,13 +102,13 @@ export function PersonDetail({ person, onClose }: { person: Person; onClose?: ()
       <div className="kpis" style={{ marginBottom: 14 }}>
         <div className="kpi">
           <div className="label">Peak forward utilization</div>
-          <div className="value num" style={{ color: (row?.peakUtil ?? 0) > 1.02 ? 'var(--warn)' : (row?.peakUtil ?? 0) < target ? 'var(--blue)' : 'var(--good)' }}>{fmtPct(row?.peakUtil ?? 0)}</div>
+          <div className="value num" style={{ color: (row?.peakUtil ?? 0) > 1.02 ? 'var(--warn)' : (row?.peakUtil ?? 0) < pTarget ? 'var(--blue)' : 'var(--good)' }}>{fmtPct(row?.peakUtil ?? 0)}</div>
           <div className="delta flat">expected, next 12 months</div>
         </div>
         <div className="kpi">
           <div className="label">Average forward utilization</div>
-          <div className="value num" style={{ color: (row?.avgUtil ?? 0) < target ? 'var(--blue)' : (row?.avgUtil ?? 0) > 1.02 ? 'var(--warn)' : 'var(--good)' }}>{fmtPct(row?.avgUtil ?? 0)}</div>
-          <div className="delta flat">target {targetPct}%</div>
+          <div className="value num" style={{ color: (row?.avgUtil ?? 0) < pTarget ? 'var(--blue)' : (row?.avgUtil ?? 0) > 1.02 ? 'var(--warn)' : 'var(--good)' }}>{fmtPct(row?.avgUtil ?? 0)}</div>
+          <div className="delta flat">vs {targetPct}% target</div>
         </div>
         <div className="kpi">
           <div className="label">Over / under / idle weeks</div>
@@ -140,7 +145,7 @@ export function PersonDetail({ person, onClose }: { person: Person; onClose?: ()
                   <td
                     key={i}
                     className={`ru-cell${c.util > 1.02 ? ' over' : ''}`}
-                    style={cellStyle(c.util, c.certainty, c.committed, target)}
+                    style={cellStyle(c.util, c.certainty, c.committed, pTarget)}
                     title={c.committed ? `${weekLabel(weeks[i])}: ${Math.round(c.util * 100)}% forward · ${c.committed.toFixed(2)} FTE at ${Math.round(c.certainty * 100)}% likely` : `${weekLabel(weeks[i])}: idle`}
                   >
                     {c.committed > 0 ? <span className={c.util > 1.02 ? 'ru-over-num' : ''}>{Math.round(c.util * 100)}</span> : null}

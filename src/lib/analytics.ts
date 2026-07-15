@@ -583,11 +583,18 @@ export interface RosterWeekCell {
 export interface RosterUtilRow {
   person: Person
   weekly: RosterWeekCell[]
+  target: number // this person's target utilization (their own, or the global fallback)
   avgUtil: number // mean EXPECTED utilization across the stats window (idle weeks included)
   overWeeks: number // weeks expected-over capacity (stats window)
   underWeeks: number // weeks booked but expected-under capacity (stats window)
   idleWeeks: number // weeks with zero booking (stats window)
   peakUtil: number // peak EXPECTED utilization
+}
+
+/** A person's target utilization: their own `targetUtil` if set, else the
+ *  global target. One place so every view agrees. */
+export function personTarget(p: Person, globalTarget: number): number {
+  return p.targetUtil != null ? p.targetUtil : globalTarget
 }
 
 const OVER_CAP = 1.02 // above capacity → over-allocated (unsustainable)
@@ -659,6 +666,7 @@ export function rosterUtilization(
   const win = statsWeeks ?? activeHorizonWeeks(state, weeks)
   const rows: RosterUtilRow[] = state.roster.map((p) => {
     const cap = p.capacity || 1
+    const pt = personTarget(p, target) // this person's own target (or the global fallback)
     const c = committed.get(p.id) ?? new Array(weeks.length).fill(0)
     const w = weighted.get(p.id) ?? new Array(weeks.length).fill(0)
     const weekly: RosterWeekCell[] = weeks.map((_, i) => ({
@@ -674,9 +682,10 @@ export function rosterUtilization(
     return {
       person: p,
       weekly,
+      target: pt,
       avgUtil,
       overWeeks: stats.filter((x) => x.util > OVER_CAP).length,
-      underWeeks: stats.filter((x) => x.committed > 0 && x.util < target).length,
+      underWeeks: stats.filter((x) => x.committed > 0 && x.util < pt).length,
       idleWeeks: stats.filter((x) => x.committed === 0).length,
       peakUtil: stats.reduce((m, x) => Math.max(m, x.util), 0),
     }

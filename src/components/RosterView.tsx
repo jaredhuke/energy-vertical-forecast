@@ -10,7 +10,9 @@ function RosterTable({ group }: { group: Group }) {
   const removePerson = useStore((s) => s.removePerson)
   const addPerson = useStore((s) => s.addPerson)
   const selectPerson = useStore((s) => s.selectPerson)
+  const gTarget = useStore((s) => s.utilizationTarget) // global default target %
   const people = roster.filter((p) => p.group === group)
+  const gTargetPct = Math.round(gTarget * 100)
 
   const set = (id: string, patch: Partial<Person>) => updatePerson(id, patch)
 
@@ -34,8 +36,9 @@ function RosterTable({ group }: { group: Group }) {
               <th style={{ width: '14%' }}>Level</th>
               <th style={{ width: '24%' }}>Title</th>
               <th style={{ width: '20%' }}>Role</th>
-              <th className="num" style={{ width: 90 }}>Capacity</th>
-              <th className="num" style={{ width: 110 }}>Rate $/week</th>
+              <th className="num" style={{ width: 84 }}>Capacity</th>
+              <th className="num" style={{ width: 84 }}>Target %</th>
+              <th className="num" style={{ width: 104 }}>Rate $/week</th>
               <th style={{ width: 34 }}></th>
             </tr>
           </thead>
@@ -55,7 +58,8 @@ function RosterTable({ group }: { group: Group }) {
                 <td><input className="plain" style={{ width: '100%' }} value={p.title} placeholder="—" onChange={(e) => set(p.id, { title: e.target.value })} /></td>
                 <td><input className="plain" style={{ width: '100%' }} value={p.role} onChange={(e) => set(p.id, { role: e.target.value })} /></td>
                 <td className="num"><input className="plain num" style={{ width: 60, textAlign: 'right' }} type="number" min={0} step={0.1} value={p.capacity} onWheel={(e) => e.currentTarget.blur()} onChange={(e) => set(p.id, { capacity: Number(e.target.value) || 0 })} /></td>
-                <td className="num"><input className="plain num" style={{ width: 80, textAlign: 'right' }} type="number" min={0} step={100} value={p.costRate ?? ''} placeholder="—" onWheel={(e) => e.currentTarget.blur()} onChange={(e) => set(p.id, { costRate: e.target.value === '' ? undefined : Number(e.target.value) })} /></td>
+                <td className="num"><input className="plain num" style={{ width: 58, textAlign: 'right' }} type="number" min={0} max={150} step={5} value={p.targetUtil != null ? Math.round(p.targetUtil * 100) : ''} placeholder={String(gTargetPct)} title={p.targetUtil == null ? `Team default ${gTargetPct}% — type a number to set a personal target` : 'Personal target utilization %'} onWheel={(e) => e.currentTarget.blur()} onChange={(e) => set(p.id, { targetUtil: e.target.value === '' ? undefined : Number(e.target.value) / 100 })} /></td>
+                <td className="num"><input className="plain num" style={{ width: 78, textAlign: 'right' }} type="number" min={0} step={100} value={p.costRate ?? ''} placeholder="—" onWheel={(e) => e.currentTarget.blur()} onChange={(e) => set(p.id, { costRate: e.target.value === '' ? undefined : Number(e.target.value) })} /></td>
                 <td><button className="icon-btn" title="Remove" onClick={() => { if (confirm(`Remove ${p.name}? Their assignments become unassigned.`)) removePerson(p.id) }}>×</button></td>
               </tr>
             ))}
@@ -67,10 +71,12 @@ function RosterTable({ group }: { group: Group }) {
 }
 
 export function RosterView() {
+  const gTargetPct = Math.round(useStore((s) => s.utilizationTarget) * 100)
   return (
     <div className="grid" style={{ gap: 16 }}>
       <div className="hint">
-        Manage people here — name, level, role, weekly capacity (1.0 = full time), optional $/week rate. Their weekly
+        Manage people here — name, level, role, weekly capacity (1.0 = full time), a per-person <b>Target %</b> (blank = the
+        team default {gTargetPct}%), optional $/week rate. Their weekly
         forecast utilization is on the <b>Utilization</b> tab. Delivery lines can be named here or left abstract
         (added as role lines directly on an opportunity).
       </div>

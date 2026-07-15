@@ -21,6 +21,7 @@ export interface Person {
   title: string // free-text job title
   role: string // roll-up category, e.g. Solution Architect, Data Scientist
   capacity: number // weekly capacity in FTE (1.0 = full time)
+  targetUtil?: number // per-person target utilization (0..1.2); falls back to the global target when unset
   costRate?: number // optional $/week — unlocks cost forecasting later
 }
 

@@ -119,7 +119,7 @@ export function UtilizationView() {
         })
 
   const overPeople = rows.filter((r) => r.peakUtil > 1.02).length
-  const belowTarget = rows.filter((r) => r.avgUtil < target).length
+  const belowTarget = rows.filter((r) => r.avgUtil < r.target).length
   const rosterAvg = rows.length ? rows.reduce((s, r) => s + r.avgUtil, 0) / rows.length : 0
   const targetPct = Math.round(target * 100)
 
@@ -185,7 +185,7 @@ export function UtilizationView() {
               </colgroup>
               <thead>
                 <tr>
-                  <th className="ru-lab">Person · average / over / under</th>
+                  <th className="ru-lab">Person · average / target / over / under</th>
                   {cols.map((c, i) => (
                     <th key={i} className={`ru-wk${c.yearStart ? ' ys' : ''}`} title={c.title}>
                       <span className="wknum">{c.top}</span>
@@ -196,7 +196,8 @@ export function UtilizationView() {
               </thead>
               <tbody>
                 {rows.map((r) => {
-                  const avgBand = utilBand(r.avgUtil, target)
+                  const rTargetPct = Math.round(r.target * 100)
+                  const avgBand = utilBand(r.avgUtil, r.target)
                   return (
                     <tr key={r.person.id}>
                       <td className={`ru-lab team-${r.person.group}`}>
@@ -206,6 +207,7 @@ export function UtilizationView() {
                         </div>
                         <div className="ru-stats">
                           <span>average <b style={{ color: avgBand === 'over' ? 'var(--warn)' : avgBand === 'under' ? 'var(--blue)' : 'var(--good)' }}>{fmtPct(r.avgUtil)}</b></span>
+                          <span className="faint">target {rTargetPct}%</span>
                           <span className="ru-over">over {r.overWeeks}</span>
                           <span className="ru-under">under {r.underWeeks}</span>
                           <span className="faint">idle {r.idleWeeks}</span>
@@ -214,7 +216,7 @@ export function UtilizationView() {
                       {cols.map((c, i) => {
                         const cell = c.cell(r)
                         return (
-                          <td key={i} className={`ru-cell${c.yearStart ? ' ys' : ''}${cell.util > 1.02 ? ' over' : ''}`} style={cellStyle(cell, target)} title={cell.committed ? `${c.title}: ${Math.round(cell.util * 100)}% forward utilization${cell.util > 1.02 ? ' — OVER CAPACITY' : ''} (target ${targetPct}%) · ${cell.committed.toFixed(2)} FTE booked at ${Math.round(cell.certainty * 100)}% likely` : `${c.title}: idle`}>
+                          <td key={i} className={`ru-cell${c.yearStart ? ' ys' : ''}${cell.util > 1.02 ? ' over' : ''}`} style={cellStyle(cell, r.target)} title={cell.committed ? `${c.title}: ${Math.round(cell.util * 100)}% forward utilization${cell.util > 1.02 ? ' — OVER CAPACITY' : ''} (target ${rTargetPct}%) · ${cell.committed.toFixed(2)} FTE booked at ${Math.round(cell.certainty * 100)}% likely` : `${c.title}: idle`}>
                             {/* over-capacity is marked by an inset ring (shape, not colour alone) + bold digits */}
                             {cell.committed > 0 ? <span className={cell.util > 1.02 ? 'ru-over-num' : ''}>{Math.round(cell.util * 100)}</span> : null}
                           </td>

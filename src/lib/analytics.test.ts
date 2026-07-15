@@ -24,6 +24,7 @@ import {
   utilBand,
   oppCost,
   marginTotals,
+  personTarget,
 } from './analytics'
 import { addWeeks, weekKeyOf, mondayOf, dateKey, weekRange } from './weeks'
 
@@ -575,6 +576,43 @@ describe('energyUtilization cost — per person, revenue-consistent weighting', 
   })
   it('per-person cost never exceeds the un-weighted staffing spend', () => {
     for (const x of u) expect(x.cost).toBeGreaterThanOrEqual(0)
+  })
+})
+
+// ===========================================================================
+// PER-PERSON TARGET UTILIZATION — each person's own target, else the global.
+// ===========================================================================
+describe('per-person target utilization', () => {
+  it('personTarget: own targetUtil wins, else the global falls through', () => {
+    expect(personTarget(roster[0], 0.8)).toBe(0.8) // Alice has no targetUtil
+    expect(personTarget({ ...roster[0], targetUtil: 0.5 }, 0.8)).toBe(0.5)
+    expect(personTarget({ ...roster[0], targetUtil: 0 }, 0.8)).toBe(0) // 0 is a real target, not "unset"
+  })
+
+  it('rosterUtilization row.target = own target, or the global fallback', () => {
+    const st: ForecastState = { ...state, roster: [{ ...roster[0], targetUtil: 0.5 }, roster[1], roster[2]] }
+    const rows = rosterUtilization(st, WEEKS, 0.8)
+    expect(rows.find((r) => r.person.id === 'p-alice')!.target).toBe(0.5) // own
+    expect(rows.find((r) => r.person.id === 'p-bob')!.target).toBe(0.8) // global fallback
+  })
+
+  it('underWeeks is measured against the PERSON’s target, not the global', () => {
+    // One person, capacity 1.0, booked 0.6 FTE (signed → certain) for 4 weeks:
+    // util = 0.6 every week. Under an 80% target (0.6 < 0.8), on a 50% target.
+    const p: Person = { id: 'p-x', name: 'X', group: 'energy', level: '', title: '', role: 'R', capacity: 1.0 }
+    const oppX: Opportunity = {
+      id: 'ox', name: 'x', client: '', type: 'external', booking: 'signed', stageId: 'closed',
+      dealValue: 0, startWeek: '2026-01-05', durationWeeks: 4,
+      assignments: [{ id: 'a', personId: 'p-x', role: 'R', group: 'energy', fte: { '0': 0.6, '1': 0.6, '2': 0.6, '3': 0.6 } }],
+    }
+    const base: ForecastState = { roster: [p], stages, opportunities: [oppX], snapshots: [], editor: 't' }
+    // global 80% → all 4 weeks under
+    expect(rosterUtilization(base, WEEKS, 0.8)[0].underWeeks).toBe(4)
+    // personal 50% target → none under (0.6 ≥ 0.5)
+    const withTarget: ForecastState = { ...base, roster: [{ ...p, targetUtil: 0.5 }] }
+    const row = rosterUtilization(withTarget, WEEKS, 0.8)[0]
+    expect(row.target).toBe(0.5)
+    expect(row.underWeeks).toBe(0)
   })
 })
 
