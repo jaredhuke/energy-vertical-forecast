@@ -4,6 +4,7 @@ import type { Assignment, ForecastState, Group, Opportunity, Person, ProjectType
 import { DEFAULT_STAGES } from '../lib/funnel'
 import { demandByWeek, horizon, revenueTotals, totals } from '../lib/analytics'
 import type { Bundle } from '../lib/persistence'
+import type { GitHubConfig } from '../lib/githubData'
 import { addWeeks, weekKeyOf } from '../lib/weeks'
 
 export type View = 'dashboard' | 'opportunities' | 'utilization' | 'capacity' | 'revenue' | 'roster' | 'stages'
@@ -30,6 +31,8 @@ interface UiState {
   dirHandle: unknown | null // File System Access handle (not persisted)
   dirName: string | null
   dirty: boolean // unsaved changes vs connected folder
+  githubCfg: GitHubConfig | null // connected private-repo shared dataset (persisted, incl. the user's own token)
+  githubSha: string | null // last-loaded dataset.json SHA (optimistic lock; not persisted)
   lastDeleted: Opportunity | null // most recent deletion, for the Undo toast (not persisted)
 }
 
@@ -78,6 +81,10 @@ interface Actions {
   // file system
   setDir: (handle: unknown, name: string) => void
   markSaved: () => void
+
+  // github private shared dataset
+  setGithubCfg: (cfg: GitHubConfig | null) => void
+  setGithubSha: (sha: string | null) => void
 }
 
 export type Store = ForecastState & UiState & Actions
@@ -113,6 +120,8 @@ export const useStore = create<Store>()(
       dirHandle: null,
       dirName: null,
       dirty: false,
+      githubCfg: null,
+      githubSha: null,
       lastDeleted: null,
 
       // ---- ui ----
@@ -318,6 +327,9 @@ export const useStore = create<Store>()(
       // ---- file system ----
       setDir: (dirHandle, dirName) => set({ dirHandle, dirName }),
       markSaved: () => set({ dirty: false }),
+
+      setGithubCfg: (githubCfg) => set({ githubCfg, githubSha: null }),
+      setGithubSha: (githubSha) => set({ githubSha }),
     }),
     {
       name: 'evf-state-v1',
@@ -350,6 +362,7 @@ export const useStore = create<Store>()(
         utilizationTarget: s.utilizationTarget,
         ganttLabelWidth: s.ganttLabelWidth,
         showCostMargin: s.showCostMargin,
+        githubCfg: s.githubCfg, // remembers the repo + this user's own token (their browser only)
         view: s.view, // reopen where you left off
       }),
     },

@@ -145,6 +145,13 @@ input:focus, select:focus, textarea:focus {
 input.plain { background: transparent; border-color: transparent; padding: 4px 6px; }
 input.plain:hover { border-color: var(--border-strong); }
 label.field { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--text-dim); }
+.field { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--text-dim); margin-bottom: 10px; }
+
+/* inline status banners (modals/forms) */
+.banner { border-radius: var(--r-sm); padding: 8px 10px; font-size: 12px; line-height: 1.45; }
+.banner.danger { background: #fdecec; color: #b3261e; border: 1px solid #f3c6c4; }
+.banner.ok { background: #e9f5ef; color: var(--good); border: 1px solid #b9dfcb; }
+.mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.92em; word-break: break-all; }
 
 /* ---- main / cards ---- */
 .main { flex: 1; overflow: auto; padding: 20px; }

@@ -3,8 +3,10 @@ import { useStore } from './store/useStore'
 import type { View } from './store/useStore'
 import { exportCsv, exportJson, loadPublishedDataset, loadSeed, toBundle } from './lib/persistence'
 import { fsSupported, pickDirectory, readBundle, writeBundle } from './lib/fs'
+import { GitHubDataError, loadFromGitHub, saveToGitHub } from './lib/githubData'
 import { downloadTemplate, parseOpportunityWorkbook, type ImportDraft } from './lib/xlsxImport'
 import { ImportExcel } from './components/ImportExcel'
+import { GitHubConnectModal } from './components/GitHubConnectModal'
 import { Modal } from './components/Modal'
 import { Dashboard } from './components/Dashboard'
 import { OpportunitiesView } from './components/OpportunitiesView'
@@ -74,11 +76,15 @@ export default function App() {
   const selectedPersonId = useStore((s) => s.selectedPersonId)
   const selectPerson = useStore((s) => s.selectPerson)
   const selectedPerson = roster.find((p) => p.id === selectedPersonId) || null
+  const githubCfg = useStore((s) => s.githubCfg)
+  const githubSha = useStore((s) => s.githubSha)
+  const setGithubSha = useStore((s) => s.setGithubSha)
 
   const fileInput = useRef<HTMLInputElement>(null)
   const excelInput = useRef<HTMLInputElement>(null)
   const [busy, setBusy] = useState('')
   const [excelDraft, setExcelDraft] = useState<{ draft: ImportDraft; fileName: string } | null>(null)
+  const [showGithub, setShowGithub] = useState(false)
 
   // The Undo toast lingers 8 seconds, then the deletion becomes final.
   useEffect(() => {
@@ -87,9 +93,25 @@ export default function App() {
     return () => clearTimeout(t)
   }, [lastDeleted, clearUndo])
 
-  // First run: read the published dataset (the public data the site is hosted
-  // with); fall back to the build-time bundled seed when offline / on file://.
+  // First run. If connected to a private GitHub dataset, that shared data is
+  // the source of truth — pull it on open (silent on failure so a stale token
+  // just leaves the last local copy in place). Otherwise read the published
+  // dataset, falling back to the build-time seed offline / on file://.
   useEffect(() => {
+    if (githubCfg) {
+      loadFromGitHub(githubCfg)
+        .then(({ bundle, sha }) => {
+          setGithubSha(sha)
+          if (bundle.opportunities.length || bundle.roster.length) {
+            replaceAll(bundle)
+            markSaved()
+          }
+        })
+        .catch(() => {
+          /* keep the persisted local copy; the user can reconnect via the header */
+        })
+      return
+    }
     if (roster.length === 0 && opportunities.length === 0) {
       loadPublishedDataset().then((b) => {
         if (b && (b.opportunities.length || b.roster.length)) replaceAll(b)
@@ -153,6 +175,38 @@ export default function App() {
       markSaved()
     } catch (e) {
       alert('Load failed: ' + (e as Error).message + '\nMake sure you selected the repo root (it has a public/data folder).')
+    } finally {
+      setBusy('')
+    }
+  }
+
+  // ---- GitHub private shared dataset ----
+  async function githubLoad() {
+    if (!githubCfg) return
+    if (dirty && !confirm('Load the shared data from GitHub? Your unsaved local changes will be replaced.')) return
+    try {
+      setBusy('load')
+      const { bundle, sha } = await loadFromGitHub(githubCfg)
+      setGithubSha(sha)
+      replaceAll(bundle)
+      markSaved()
+    } catch (e) {
+      alert(e instanceof GitHubDataError ? e.message : 'Load from GitHub failed.')
+    } finally {
+      setBusy('')
+    }
+  }
+
+  async function githubSave() {
+    if (!githubCfg) return
+    try {
+      setBusy('save')
+      const newSha = await saveToGitHub(githubCfg, toBundle(useStore.getState()), githubSha, editor)
+      setGithubSha(newSha)
+      markSaved()
+    } catch (e) {
+      // On a conflict, tell them to Load first; the message already says so.
+      alert(e instanceof GitHubDataError ? e.message : 'Save to GitHub failed.')
     } finally {
       setBusy('')
     }
@@ -229,24 +283,37 @@ export default function App() {
             <input value={editor} onChange={(e) => setEditor(e.target.value)} style={{ width: 90 }} />
           </label>
 
-          {fsSupported() &&
-            (dirHandle ? (
-              <>
-                <button className="btn ghost" onClick={load} disabled={busy === 'load'} title="Re-read the shared folder (pull teammates' changes — OneDrive sync or git pull)">
-                  {busy === 'load' ? 'Loading…' : 'Load ↓'}
-                </button>
-                <button className="btn" onClick={save} disabled={busy === 'save'} title={`Write JSON files into ${dirName} — OneDrive syncs them to the team automatically; in a git clone, commit and push`}>
-                  {dirty && <span className="dirty-dot" />} {busy === 'save' ? 'Saving…' : 'Save ↑'} <span className="dirlabel">{dirName}</span>
-                </button>
-              </>
-            ) : (
-              <button className="btn ghost" onClick={connect} title="Point at the shared data folder — a OneDrive-synced SharePoint library or a cloned git repo">
-                Connect shared folder
+          {/* Active shared-data source drives the header Load/Save. GitHub
+              (invite-only shared dataset) takes priority when connected;
+              otherwise the File-System shared folder; else a connect button. */}
+          {githubCfg ? (
+            <>
+              <button className="btn ghost" onClick={githubLoad} disabled={busy === 'load'} title={`Pull the latest shared data from ${githubCfg.owner}/${githubCfg.repo}`}>
+                {busy === 'load' ? 'Loading…' : 'Load ↓'}
               </button>
-            ))}
+              <button className="btn" onClick={githubSave} disabled={busy === 'save'} title={`Commit the shared dataset to ${githubCfg.owner}/${githubCfg.repo}`}>
+                {dirty && <span className="dirty-dot" />} {busy === 'save' ? 'Saving…' : 'Save ↑'} <span className="dirlabel">{githubCfg.owner}/{githubCfg.repo}</span>
+              </button>
+            </>
+          ) : fsSupported() && dirHandle ? (
+            <>
+              <button className="btn ghost" onClick={load} disabled={busy === 'load'} title="Re-read the shared folder (pull teammates' changes — OneDrive sync or git pull)">
+                {busy === 'load' ? 'Loading…' : 'Load ↓'}
+              </button>
+              <button className="btn" onClick={save} disabled={busy === 'save'} title={`Write JSON files into ${dirName} — OneDrive syncs them to the team automatically; in a git clone, commit and push`}>
+                {dirty && <span className="dirty-dot" />} {busy === 'save' ? 'Saving…' : 'Save ↑'} <span className="dirlabel">{dirName}</span>
+              </button>
+            </>
+          ) : (
+            <button className="btn ghost" onClick={() => setShowGithub(true)} title="Point the app at a private (invite-only) GitHub repo as the shared dataset">
+              Connect shared data
+            </button>
+          )}
 
           <DataMenu
             items={[
+              { label: githubCfg ? `Shared data: ${githubCfg.owner}/${githubCfg.repo}…` : 'Shared data on GitHub…', onPick: () => setShowGithub(true) },
+              ...(fsSupported() && !githubCfg ? [{ label: dirHandle ? `Folder: ${dirName}` : 'Connect a local/SharePoint folder', onPick: connect }] : []),
               { label: 'Import from Excel…', onPick: () => excelInput.current?.click() },
               { label: 'Download Excel template', onPick: () => downloadTemplate(stages, roster) },
               { label: 'Load published data', onPick: loadPublished, disabled: busy === 'load' },
@@ -294,6 +361,12 @@ export default function App() {
       {selectedPerson && (
         <Modal onClose={() => selectPerson(null)}>
           <PersonDetail key={selectedPerson.id} person={selectedPerson} onClose={() => selectPerson(null)} />
+        </Modal>
+      )}
+
+      {showGithub && (
+        <Modal onClose={() => setShowGithub(false)}>
+          <GitHubConnectModal onClose={() => setShowGithub(false)} />
         </Modal>
       )}
 
