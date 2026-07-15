@@ -31,7 +31,8 @@ interface UiState {
   dirHandle: unknown | null // File System Access handle (not persisted)
   dirName: string | null
   dirty: boolean // unsaved changes vs connected folder
-  githubCfg: GitHubConfig | null // connected private-repo shared dataset (persisted, incl. the user's own token)
+  passphrase: string | null // team password that decrypts the shared dataset (persisted → stay signed in)
+  githubCfg: GitHubConfig | null // OPTIONAL owner token for publishing the encrypted dataset (persisted)
   githubSha: string | null // last-loaded dataset.json SHA (optimistic lock; not persisted)
   demoMode: boolean // viewing the public demo without a key (bypasses the lock screen; not persisted)
   lastDeleted: Opportunity | null // most recent deletion, for the Undo toast (not persisted)
@@ -83,7 +84,8 @@ interface Actions {
   setDir: (handle: unknown, name: string) => void
   markSaved: () => void
 
-  // github private shared dataset
+  // shared dataset access
+  setPassphrase: (p: string | null) => void
   setGithubCfg: (cfg: GitHubConfig | null) => void
   setGithubSha: (sha: string | null) => void
   setDemoMode: (v: boolean) => void
@@ -122,6 +124,7 @@ export const useStore = create<Store>()(
       dirHandle: null,
       dirName: null,
       dirty: false,
+      passphrase: null,
       githubCfg: null,
       githubSha: null,
       demoMode: false,
@@ -331,6 +334,7 @@ export const useStore = create<Store>()(
       setDir: (dirHandle, dirName) => set({ dirHandle, dirName }),
       markSaved: () => set({ dirty: false }),
 
+      setPassphrase: (passphrase) => set({ passphrase }),
       setGithubCfg: (githubCfg) => set({ githubCfg, githubSha: null }),
       setGithubSha: (githubSha) => set({ githubSha }),
       setDemoMode: (demoMode) => set({ demoMode }),
@@ -366,7 +370,8 @@ export const useStore = create<Store>()(
         utilizationTarget: s.utilizationTarget,
         ganttLabelWidth: s.ganttLabelWidth,
         showCostMargin: s.showCostMargin,
-        githubCfg: s.githubCfg, // remembers the repo + this user's own token (their browser only)
+        passphrase: s.passphrase, // stay signed in (team password, this browser only)
+        githubCfg: s.githubCfg, // optional owner token for publishing (their browser only)
         view: s.view, // reopen where you left off
       }),
     },

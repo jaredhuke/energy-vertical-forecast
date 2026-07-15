@@ -1,42 +1,35 @@
 import { useState } from 'react'
 import { useStore } from '../store/useStore'
-import { DEFAULT_DATA_REPO, GitHubDataError, loadFromGitHub, testConnection, type GitHubConfig } from '../lib/githubData'
+import { loadEncryptedDataset, WrongPasswordError } from '../lib/persistence'
 
-/** Front-door lock. The team shares ONE access key (a fine-grained GitHub token
- *  with Contents access to the private data repo). The key is validated against
- *  GitHub before entry, so a wrong key can't read the private data — the lock is
- *  real, not a password hidden in the page. */
+/** Front-door lock. The team shares ONE password. It decrypts the published
+ *  dataset (public/data/dataset.enc) — the real data is AES-GCM ciphertext at
+ *  rest, so a wrong password simply can't decrypt it. No token anywhere. */
 export function LockScreen() {
-  const setGithubCfg = useStore((s) => s.setGithubCfg)
-  const setGithubSha = useStore((s) => s.setGithubSha)
+  const setPassphrase = useStore((s) => s.setPassphrase)
   const setDemoMode = useStore((s) => s.setDemoMode)
   const replaceAll = useStore((s) => s.replaceAll)
   const markSaved = useStore((s) => s.markSaved)
 
-  const [key, setKey] = useState('')
+  const [pw, setPw] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
 
-  async function login() {
-    if (!key.trim()) {
-      setError('Enter your team access key.')
+  async function signIn() {
+    if (!pw.trim()) {
+      setError('Enter the team password.')
       return
     }
-    const cfg: GitHubConfig = { ...DEFAULT_DATA_REPO, token: key.trim() }
     setBusy(true)
     setError('')
     try {
-      await testConnection(cfg) // rejects a wrong/expired key before entry
-      const { bundle, sha } = await loadFromGitHub(cfg)
-      setGithubCfg(cfg)
-      setGithubSha(sha)
-      if (bundle.opportunities.length || bundle.roster.length) {
-        replaceAll(bundle)
-        markSaved()
-      }
-      // githubCfg is now set → App unlocks and renders.
+      const bundle = await loadEncryptedDataset(pw)
+      setPassphrase(pw)
+      replaceAll(bundle)
+      markSaved()
+      // passphrase is now set → App unlocks and renders.
     } catch (e) {
-      setError(e instanceof GitHubDataError ? e.message : 'Could not sign in. Check your key.')
+      setError(e instanceof WrongPasswordError ? 'Wrong password. Try again.' : (e as Error).message || 'Could not sign in.')
     } finally {
       setBusy(false)
     }
@@ -51,38 +44,31 @@ export function LockScreen() {
           <span className="sub">Presales Forecast</span>
         </div>
         <p className="hint" style={{ marginTop: 0 }}>
-          This workspace is private. Enter your <b>team access key</b> to open the shared forecast.
+          This workspace is private. Enter the <b>team password</b> to open the shared forecast.
         </p>
 
         <label className="field">
-          <span>Team access key</span>
+          <span>Team password</span>
           <input
             type="password"
-            value={key}
-            onChange={(e) => setKey(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && !busy && login()}
-            placeholder="github_pat_…"
+            value={pw}
+            onChange={(e) => setPw(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && !busy && signIn()}
+            placeholder="team password"
             autoFocus
-            autoComplete="off"
+            autoComplete="current-password"
           />
         </label>
 
         {error && <div className="banner danger" role="alert" style={{ marginBottom: 10 }}>{error}</div>}
 
-        <button className="btn primary" onClick={login} disabled={busy} style={{ width: '100%', justifyContent: 'center' }}>
+        <button className="btn primary" onClick={signIn} disabled={busy} style={{ width: '100%', justifyContent: 'center' }}>
           {busy ? 'Signing in…' : 'Sign in'}
         </button>
 
-        <details style={{ marginTop: 12, fontSize: 12 }}>
-          <summary style={{ cursor: 'pointer' }}>Don't have a key?</summary>
-          <p style={{ margin: '8px 0 0', lineHeight: 1.5 }}>
-            Ask the workspace owner to (1) invite you to the{' '}
-            <span className="mono">{DEFAULT_DATA_REPO.owner}/{DEFAULT_DATA_REPO.repo}</span> repository, then (2) share the
-            team key — or make your own fine-grained token with <b>Contents: read &amp; write</b> on that repo at{' '}
-            <span className="mono">github.com/settings/personal-access-tokens</span>. Your key is stored only in this
-            browser and sent only to GitHub.
-          </p>
-        </details>
+        <p style={{ margin: '12px 0 0', fontSize: 12, color: 'var(--text-faint)', lineHeight: 1.5 }}>
+          Don't have it? Ask the workspace owner for the team password. It's kept only in this browser.
+        </p>
 
         <button className="link-btn" onClick={() => setDemoMode(true)} disabled={busy} style={{ marginTop: 14 }}>
           Just exploring? View the demo →

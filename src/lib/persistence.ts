@@ -1,6 +1,7 @@
 import type { ForecastState, Opportunity, Person, StageDef } from '../types'
 import { effectiveProbability, stageName } from './funnel'
 import { addWeeks, isoWeekNum } from './weeks'
+import { decryptJson, type EncBlob } from './crypto'
 
 // Seed data bundled at build time (not fetched) so the app works from any
 // host AND from a single-file / file:// build with no network. One file per
@@ -121,6 +122,44 @@ export async function loadSeed(): Promise<Bundle | null> {
   } catch (e) {
     console.warn('Seed load failed', e)
     return null
+  }
+}
+
+/** URL of the ENCRYPTED shared dataset (published alongside the app). It holds
+ *  the real data as ciphertext; only the team password decrypts it. */
+export const ENC_DATASET_URL: string = `${import.meta.env.BASE_URL}data/dataset.enc`.replace(/\/{2,}/g, '/')
+
+export class WrongPasswordError extends Error {}
+
+/** Fetch + decrypt the shared dataset with the team password. Throws
+ *  WrongPasswordError on a bad password, or a plain Error if there's no
+ *  published encrypted dataset yet / the network fails. */
+export async function loadEncryptedDataset(passphrase: string, url: string = ENC_DATASET_URL): Promise<Bundle> {
+  let res: Response
+  try {
+    res = await fetch(url, { cache: 'no-store' })
+  } catch {
+    throw new Error('Could not reach the shared data. Check your connection.')
+  }
+  if (res.status === 404) throw new Error('No shared data has been published yet.')
+  if (!res.ok) throw new Error(`Could not load the shared data (${res.status}).`)
+  let blob: EncBlob
+  try {
+    blob = await res.json()
+  } catch {
+    throw new Error('The shared data file is not readable.')
+  }
+  let b: any
+  try {
+    b = await decryptJson<any>(blob, passphrase)
+  } catch {
+    throw new WrongPasswordError('Wrong password.')
+  }
+  return {
+    roster: b.roster ?? [],
+    stages: b.stages ?? [],
+    opportunities: (b.opportunities ?? []).sort((a: Opportunity, z: Opportunity) => a.id.localeCompare(z.id)),
+    snapshots: b.snapshots ?? [],
   }
 }
 

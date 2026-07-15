@@ -1,12 +1,10 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useStore } from './store/useStore'
 import type { View } from './store/useStore'
-import { exportCsv, exportJson, loadPublishedDataset, loadSeed, toBundle } from './lib/persistence'
+import { exportCsv, exportJson, loadEncryptedDataset, loadPublishedDataset, loadSeed, toBundle, WrongPasswordError } from './lib/persistence'
 import { fsSupported, pickDirectory, readBundle, writeBundle } from './lib/fs'
-import { GitHubDataError, loadFromGitHub, saveToGitHub } from './lib/githubData'
 import { downloadTemplate, parseOpportunityWorkbook, type ImportDraft } from './lib/xlsxImport'
 import { ImportExcel } from './components/ImportExcel'
-import { GitHubConnectModal } from './components/GitHubConnectModal'
 import { LockScreen } from './components/LockScreen'
 import { Modal } from './components/Modal'
 import { Dashboard } from './components/Dashboard'
@@ -77,10 +75,8 @@ export default function App() {
   const selectedPersonId = useStore((s) => s.selectedPersonId)
   const selectPerson = useStore((s) => s.selectPerson)
   const selectedPerson = roster.find((p) => p.id === selectedPersonId) || null
-  const githubCfg = useStore((s) => s.githubCfg)
-  const githubSha = useStore((s) => s.githubSha)
-  const setGithubSha = useStore((s) => s.setGithubSha)
-  const setGithubCfg = useStore((s) => s.setGithubCfg)
+  const passphrase = useStore((s) => s.passphrase)
+  const setPassphrase = useStore((s) => s.setPassphrase)
   const demoMode = useStore((s) => s.demoMode)
   const setDemoMode = useStore((s) => s.setDemoMode)
 
@@ -88,7 +84,6 @@ export default function App() {
   const excelInput = useRef<HTMLInputElement>(null)
   const [busy, setBusy] = useState('')
   const [excelDraft, setExcelDraft] = useState<{ draft: ImportDraft; fileName: string } | null>(null)
-  const [showGithub, setShowGithub] = useState(false)
 
   // The Undo toast lingers 8 seconds, then the deletion becomes final.
   useEffect(() => {
@@ -97,21 +92,20 @@ export default function App() {
     return () => clearTimeout(t)
   }, [lastDeleted, clearUndo])
 
-  // On open, if a team key is stored, that private shared data is the source of
-  // truth — pull it (silent on failure so a stale key just leaves the last local
-  // copy). With no key the app stays locked (LockScreen) until a key is entered.
+  // On open, if the team password is stored, decrypt the latest shared dataset
+  // (silent on failure so a transient error just leaves the last local copy).
+  // With no password the app stays locked (LockScreen) until one is entered.
   useEffect(() => {
-    if (githubCfg) {
-      loadFromGitHub(githubCfg)
-        .then(({ bundle, sha }) => {
-          setGithubSha(sha)
+    if (passphrase) {
+      loadEncryptedDataset(passphrase)
+        .then((bundle) => {
           if (bundle.opportunities.length || bundle.roster.length) {
             replaceAll(bundle)
             markSaved()
           }
         })
         .catch(() => {
-          /* keep the persisted local copy; the user can re-enter the key */
+          /* keep the persisted local copy; the user can re-enter the password */
         })
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -119,7 +113,7 @@ export default function App() {
 
   // Demo mode (no key): load the public/seed data so the demo has something to show.
   useEffect(() => {
-    if (demoMode && !githubCfg && roster.length === 0 && opportunities.length === 0) {
+    if (demoMode && !passphrase && roster.length === 0 && opportunities.length === 0) {
       loadPublishedDataset().then((b) => {
         if (b && (b.opportunities.length || b.roster.length)) replaceAll(b)
         else loadSeed().then((s) => s && replaceAll(s))
@@ -127,16 +121,6 @@ export default function App() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [demoMode])
-
-  // Pull the latest published dataset on demand (replaces the working copy).
-  async function loadPublished() {
-    if (dirty && !confirm('Load the latest published data? Your unsaved local changes will be replaced.')) return
-    setBusy('load')
-    const b = await loadPublishedDataset()
-    setBusy('')
-    if (b) replaceAll(b)
-    else alert('No published dataset found. It appears once the site is deployed with public/data/dataset.json.')
-  }
 
   async function connect() {
     const handle = await pickDirectory()
@@ -187,36 +171,25 @@ export default function App() {
     }
   }
 
-  // ---- GitHub private shared dataset ----
-  async function githubLoad() {
-    if (!githubCfg) return
-    if (dirty && !confirm('Load the shared data from GitHub? Your unsaved local changes will be replaced.')) return
+  // ---- shared password: re-fetch the latest published encrypted dataset ----
+  async function passLoad() {
+    if (!passphrase) return
+    if (dirty && !confirm('Load the latest shared data? Your unsaved local changes will be replaced.')) return
     try {
       setBusy('load')
-      const { bundle, sha } = await loadFromGitHub(githubCfg)
-      setGithubSha(sha)
-      replaceAll(bundle)
+      const b = await loadEncryptedDataset(passphrase)
+      replaceAll(b)
       markSaved()
     } catch (e) {
-      alert(e instanceof GitHubDataError ? e.message : 'Load from GitHub failed.')
+      alert(e instanceof WrongPasswordError ? 'The team password no longer opens the data — the owner may have changed it.' : (e as Error).message)
     } finally {
       setBusy('')
     }
   }
 
-  async function githubSave() {
-    if (!githubCfg) return
-    try {
-      setBusy('save')
-      const newSha = await saveToGitHub(githubCfg, toBundle(useStore.getState()), githubSha, editor)
-      setGithubSha(newSha)
-      markSaved()
-    } catch (e) {
-      // On a conflict, tell them to Load first; the message already says so.
-      alert(e instanceof GitHubDataError ? e.message : 'Save to GitHub failed.')
-    } finally {
-      setBusy('')
-    }
+  function logout() {
+    setPassphrase(null)
+    setDemoMode(false)
   }
 
   function onImportFile(e: React.ChangeEvent<HTMLInputElement>) {
@@ -272,10 +245,10 @@ export default function App() {
     { id: 'roster', label: 'Roster & funnel', count: roster.length },
   ]
 
-  // Locked front door: no team key and not viewing the demo → the shared
-  // workspace stays hidden behind the LockScreen (real: a wrong key can't read
-  // the private data repo). Placed after all hooks so hook order is stable.
-  if (!githubCfg && !demoMode) return <LockScreen />
+  // Locked front door: no team password and not viewing the demo → the shared
+  // workspace stays hidden behind the LockScreen (real: a wrong password can't
+  // decrypt the data). Placed after all hooks so hook order is stable.
+  if (!passphrase && !demoMode) return <LockScreen />
 
   return (
     <div className="app">
@@ -295,18 +268,13 @@ export default function App() {
             <input value={editor} onChange={(e) => setEditor(e.target.value)} style={{ width: 90 }} />
           </label>
 
-          {/* Active shared-data source drives the header Load/Save. GitHub
-              (invite-only shared dataset) takes priority when connected;
-              otherwise the File-System shared folder; else a connect button. */}
-          {githubCfg ? (
-            <>
-              <button className="btn ghost" onClick={githubLoad} disabled={busy === 'load'} title={`Pull the latest shared data from ${githubCfg.owner}/${githubCfg.repo}`}>
-                {busy === 'load' ? 'Loading…' : 'Load ↓'}
-              </button>
-              <button className="btn" onClick={githubSave} disabled={busy === 'save'} title={`Commit the shared dataset to ${githubCfg.owner}/${githubCfg.repo}`}>
-                {dirty && <span className="dirty-dot" />} {busy === 'save' ? 'Saving…' : 'Save ↑'} <span className="dirlabel">{githubCfg.owner}/{githubCfg.repo}</span>
-              </button>
-            </>
+          {/* Signed in with the team password → the shared encrypted dataset is
+              the source of truth (the owner republishes updates). Otherwise the
+              optional local/SharePoint folder, else Sign in. */}
+          {passphrase ? (
+            <button className="btn ghost" onClick={passLoad} disabled={busy === 'load'} title="Re-fetch the latest shared forecast">
+              {busy === 'load' ? 'Loading…' : 'Load ↓'} <span className="dirlabel">shared</span>
+            </button>
           ) : fsSupported() && dirHandle ? (
             <>
               <button className="btn ghost" onClick={load} disabled={busy === 'load'} title="Re-read the shared folder (pull teammates' changes — OneDrive sync or git pull)">
@@ -324,16 +292,12 @@ export default function App() {
 
           <DataMenu
             items={[
-              ...(githubCfg
-                ? [
-                    { label: `Shared data settings: ${githubCfg.owner}/${githubCfg.repo}…`, onPick: () => setShowGithub(true) },
-                    { label: 'Log out', onPick: () => { setGithubCfg(null); setDemoMode(false) } },
-                  ]
-                : [{ label: 'Sign in with team key', onPick: () => setDemoMode(false) }, { label: 'Shared data on GitHub…', onPick: () => setShowGithub(true) }]),
-              ...(fsSupported() && !githubCfg ? [{ label: dirHandle ? `Folder: ${dirName}` : 'Connect a local/SharePoint folder', onPick: connect }] : []),
+              ...(passphrase
+                ? [{ label: 'Log out', onPick: logout }]
+                : [{ label: 'Sign in', onPick: () => setDemoMode(false) }]),
+              ...(fsSupported() && !passphrase ? [{ label: dirHandle ? `Folder: ${dirName}` : 'Connect a local/SharePoint folder', onPick: connect }] : []),
               { label: 'Import from Excel…', onPick: () => excelInput.current?.click() },
               { label: 'Download Excel template', onPick: () => downloadTemplate(stages, roster) },
-              { label: 'Load published data', onPick: loadPublished, disabled: busy === 'load' },
               { label: 'Import JSON…', onPick: () => fileInput.current?.click() },
               { label: 'Export CSV', onPick: () => exportCsv(useStore.getState()) },
               { label: 'Export JSON', onPick: () => exportJson(useStore.getState()) },
@@ -378,12 +342,6 @@ export default function App() {
       {selectedPerson && (
         <Modal onClose={() => selectPerson(null)}>
           <PersonDetail key={selectedPerson.id} person={selectedPerson} onClose={() => selectPerson(null)} />
-        </Modal>
-      )}
-
-      {showGithub && (
-        <Modal onClose={() => setShowGithub(false)}>
-          <GitHubConnectModal onClose={() => setShowGithub(false)} />
         </Modal>
       )}
 
