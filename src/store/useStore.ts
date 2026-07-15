@@ -120,7 +120,7 @@ export const useStore = create<Store>()(
       selectedPersonId: null,
       utilizationTarget: 0.8,
       ganttLabelWidth: 240,
-      showCostMargin: false,
+      showCostMargin: true,
       dirHandle: null,
       dirName: null,
       dirty: false,

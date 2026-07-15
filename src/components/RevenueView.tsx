@@ -47,16 +47,16 @@ export function RevenueView() {
         energy people is $50k associated with each — so the role and person figures add up to the pipeline (no double-counting).
       </div>
 
-      {/* Toggle NEVER wraps (no double-height). Cost & margin is off by default. */}
+      {/* Toggle NEVER wraps (no double-height). Direct revenue vs direct cost. */}
       <div className="ctl-row">
-        <div className="seg" title="Reveal staffing cost and margin. Cost is sensitive, so this stays off until you turn it on.">
+        <div className="seg" title="Direct revenue vs direct staffing cost = margin. Cost is sensitive; toggle to hide it.">
           <button className={showCostMargin ? 'on' : ''} aria-pressed={showCostMargin} onClick={() => setShowCostMargin(!showCostMargin)}>
-            Cost &amp; margin: {showCostMargin ? 'shown' : 'hidden'}
+            Direct cost &amp; margin: {showCostMargin ? 'shown' : 'hidden'}
           </button>
         </div>
         {noRates && (
           <span className="faint" style={{ fontSize: 12 }}>
-            Set weekly cost rates in Roster to populate these figures.
+            Set weekly cost rates in Roster to populate cost &amp; margin.
           </span>
         )}
       </div>
