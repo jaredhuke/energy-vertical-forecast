@@ -28,7 +28,8 @@ export function RevenueView() {
     <div className="grid" style={{ gap: 16 }}>
       <div className="hint">
         The revenue energy-vertical people are pulling through. <b>Pull-through = deal value × close %</b>; a signed deal
-        books at 100%. Per-role and per-person figures are <i>influence</i> — a deal counts for everyone staffed on it.
+        books at 100%. Each deal's value is <b>split equally across the energy people on it</b> — a $100k deal with two
+        energy people is $50k associated with each — so the role and person figures add up to the pipeline (no double-counting).
       </div>
 
       <div className="kpis">
@@ -47,7 +48,7 @@ export function RevenueView() {
             <thead>
               <tr>
                 <th>Role</th><th className="num">People</th><th className="num">Deals</th>
-                <th className="num">Weighted $</th><th className="num">Booked $</th><th style={{ width: '30%' }}>Total influence</th>
+                <th className="num">Weighted $</th><th className="num">Booked $</th><th style={{ width: '30%' }}>Total value</th>
               </tr>
             </thead>
             <tbody>

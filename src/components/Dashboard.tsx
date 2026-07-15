@@ -161,9 +161,9 @@ export function Dashboard() {
           ) : (
             <div className="signal-list">
               {unstaffed.slice(0, 6).map((u, i) => (
-                <button key={i} className="signal-row" onClick={() => { selectOpportunity(u.oppId); setView('opportunities') }} title={`Open ${u.oppName}`}>
-                  <span className="row" style={{ gap: 6, minWidth: 0 }}><span className={`teamtag ${u.group}`}>{u.group === 'energy' ? 'Energy' : 'Delivery'}</span><span className="signal-name">{u.role}</span></span>
-                  <span className="faint num">{u.fteWeeks.toFixed(1)} FTE-weeks · {u.oppName.length > 16 ? u.oppName.slice(0, 15) + '…' : u.oppName}</span>
+                <button key={i} className="signal-row stack" onClick={() => { selectOpportunity(u.oppId); setView('opportunities') }} title={`Open ${u.oppName}`}>
+                  <span className="row" style={{ gap: 6, minWidth: 0 }}><span className={`teamtag ${u.group}`}>{u.group === 'energy' ? 'Energy' : 'Delivery'}</span><span className="signal-name">{u.role}</span><span className="faint num" style={{ fontSize: 11 }}>{u.fteWeeks.toFixed(1)} FTE-weeks</span></span>
+                  <span className="signal-proj">{u.oppName}</span>
                 </button>
               ))}
               {unstaffed.length > 6 && <div className="faint" style={{ fontSize: 11, padding: '4px 2px' }}>+{unstaffed.length - 6} more</div>}

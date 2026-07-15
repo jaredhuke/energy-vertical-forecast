@@ -339,7 +339,7 @@ export function GanttView() {
                           <button className={`caret-btn ${isOpen ? 'open' : ''}`} title={isOpen ? 'Collapse' : 'Expand'} aria-label={isOpen ? 'Collapse roles' : 'Expand roles'} onClick={() => toggle(opp.id)}>
                             <span className="caret" />
                           </button>
-                          <button className="linklike proj" onClick={() => select(opp.id)} title="Open detail dialog">{opp.name}</button>
+                          <button className="linklike proj" onClick={() => select(opp.id)} title={`${opp.name} — open detail`}>{opp.name}</button>
                           <span className="slide">
                             <button className="mini-btn" title="Add role" aria-label="Add role" onClick={() => setAddingFor(addingFor === opp.id ? null : opp.id)}>+</button>
                             <button className="mini-btn" title="Slide back 1 week" onClick={() => slide(opp.id, -1)}>‹</button>

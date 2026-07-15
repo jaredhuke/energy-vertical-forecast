@@ -390,21 +390,32 @@ export interface RoleRevenue {
   booked: number
 }
 
-/** Per energy-role-type, aggregated over DISTINCT deals that use that role. */
+/** Number of energy staffing lines on a deal. A deal's value is SPLIT equally
+ *  across them — a $100k deal with 2 energy people is $100k for the group but
+ *  $50k associated with each. Keeps role/person totals additive (no overlap). */
+export function energyCount(o: Opportunity): number {
+  return o.assignments.filter((a) => a.group === 'energy').length
+}
+
+/** Per energy-role-type: each deal's value split equally across its energy
+ *  people, then summed by role (so two roles on a $100k deal get $50k each). */
 export function revenueByEnergyRole(state: ForecastState): RoleRevenue[] {
   const map = new Map<string, { deals: Set<string>; people: Set<string>; weighted: number; booked: number }>()
   for (const o of state.opportunities) {
     if (o.type === 'internal') continue
     const energy = o.assignments.filter((a) => a.group === 'energy')
-    const rolesInDeal = new Set(energy.map((a) => a.role))
-    for (const role of rolesInDeal) {
-      const rec = map.get(role) || { deals: new Set(), people: new Set(), weighted: 0, booked: 0 }
+    const n = energy.length
+    if (n === 0) continue
+    const wShare = oppWeightedRevenue(state, o) / n
+    const bShare = oppBookedRevenue(o) / n
+    for (const a of energy) {
+      const rec = map.get(a.role) || { deals: new Set(), people: new Set(), weighted: 0, booked: 0 }
       rec.deals.add(o.id)
-      rec.weighted += oppWeightedRevenue(state, o)
-      rec.booked += oppBookedRevenue(o)
-      map.set(role, rec)
+      rec.weighted += wShare
+      rec.booked += bShare
+      if (a.personId) rec.people.add(a.personId)
+      map.set(a.role, rec)
     }
-    for (const a of energy) if (a.personId) map.get(a.role)?.people.add(a.personId)
   }
   return [...map.entries()]
     .map(([role, r]) => ({ role, deals: r.deals.size, people: r.people.size, weighted: r.weighted, booked: r.booked }))
@@ -437,14 +448,18 @@ export function energyUtilization(state: ForecastState, weeks: string[]): Person
     const active = weekly.filter((v) => v > 0)
     const peak = weekly.reduce((m, v) => Math.max(m, v), 0)
     const avg = active.length ? active.reduce((a, b) => a + b, 0) / active.length : 0
+    // Revenue = this person's SHARE of each deal (deal value ÷ energy people),
+    // so per-person figures add up to the pipeline instead of double-counting.
     let weighted = 0
     let booked = 0
     const deals = new Set<string>()
     for (const o of state.opportunities) {
-      if (!o.assignments.some((a) => a.personId === p.id)) continue
+      const mine = o.assignments.filter((a) => a.group === 'energy' && a.personId === p.id).length
+      if (mine === 0) continue
+      const n = energyCount(o)
       deals.add(o.id)
-      weighted += oppWeightedRevenue(state, o)
-      booked += oppBookedRevenue(o)
+      weighted += (oppWeightedRevenue(state, o) * mine) / n
+      booked += (oppBookedRevenue(o) * mine) / n
     }
     out.push({
       person: p,

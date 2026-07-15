@@ -195,17 +195,47 @@ describe('revenue — pull-through math', () => {
     expect(r.signedCount).toBe(1)
     expect(r.forecastCount).toBe(1)
   })
-  it('revenueByEnergyRole — deal value attributed to each staffed role (influence)', () => {
+  it('revenueByEnergyRole — deal value SPLIT across the energy people on it', () => {
     const rows = revenueByEnergyRole(state)
     const sa = rows.find((r) => r.role === 'Solution Architect')!
     const con = rows.find((r) => r.role === 'Consultant')!
+    // O1 (signed $1M) has 1 energy person (Alice) → SA booked 1M.
+    // O2 ($2M @ 50% = $1M weighted) has 2 energy (Alice, Bob) → 500k each.
     expect(sa.deals).toBe(2) // O1 + O2
     expect(sa.people).toBe(1) // Alice
-    expect(sa.weighted).toBe(1_000_000) // from O2
-    expect(sa.booked).toBe(1_000_000) // from O1
+    expect(sa.weighted).toBe(500_000) // O2 split 2 ways
+    expect(sa.booked).toBe(1_000_000) // O1, only energy person
     expect(con.deals).toBe(1) // O2 (O3 internal excluded)
-    expect(con.weighted).toBe(1_000_000)
+    expect(con.weighted).toBe(500_000) // O2 split 2 ways
     expect(con.booked).toBe(0)
+  })
+  it('the split is additive: role shares sum to the pipeline (no double-count)', () => {
+    const rows = revenueByEnergyRole(state)
+    const roleW = rows.reduce((s, r) => s + r.weighted, 0)
+    const roleB = rows.reduce((s, r) => s + r.booked, 0)
+    const t = revenueTotals(state)
+    // every non-internal deal in the fixture is energy-staffed, so shares total the pipeline
+    expect(roleW).toBeCloseTo(t.weighted, 6)
+    expect(roleB).toBeCloseTo(t.booked, 6)
+  })
+  it('a $100k deal with 2 energy people = $50k associated with each', () => {
+    const st: ForecastState = {
+      ...state,
+      opportunities: [{
+        id: 'oh', name: '', client: '', type: 'external', booking: 'signed', stageId: 'closed',
+        dealValue: 100_000, startWeek: '2026-01-05', durationWeeks: 1,
+        assignments: [
+          { id: 'e1', personId: 'p-alice', role: 'Solution Architect', group: 'energy', fte: { '0': 1 } },
+          { id: 'e2', personId: 'p-bob', role: 'Consultant', group: 'energy', fte: { '0': 1 } },
+        ],
+      }],
+    }
+    const rows = Object.fromEntries(revenueByEnergyRole(st).map((r) => [r.role, r]))
+    expect(rows['Solution Architect'].booked).toBe(50_000)
+    expect(rows['Consultant'].booked).toBe(50_000)
+    const u = Object.fromEntries(energyUtilization(st, WEEKS).map((x) => [x.person.id, x]))
+    expect(u['p-alice'].booked).toBe(50_000) // per-person share too
+    expect(u['p-bob'].booked).toBe(50_000)
   })
 })
 
@@ -216,14 +246,14 @@ describe('energyUtilization — per energy person (EXPECTED / weighted)', () => 
     expect(u['p-alice'].peakPct).toBeCloseTo(0.75, 10)
     expect(u['p-alice'].avgPct).toBeCloseTo(0.5, 10) // (0.5+0.75+0.25)/3
     expect(u['p-alice'].deals).toBe(2)
-    expect(u['p-alice'].weighted).toBe(1_000_000)
-    expect(u['p-alice'].booked).toBe(1_000_000)
+    expect(u['p-alice'].weighted).toBe(500_000) // O2 $1M weighted, split 2 energy → her 500k
+    expect(u['p-alice'].booked).toBe(1_000_000) // O1 signed, she's the only energy person
   })
   it('Bob (cap 0.5): expected peak 100% (0.5 internal / 0.5 cap), NOT over', () => {
     expect(u['p-bob'].weekly).toEqual([0.5, 0.3, 0, 0]) // W0 internal ×1, W1 0.6×50%
     expect(u['p-bob'].peakPct).toBeCloseTo(1.0, 10) // 0.5 / 0.5
     expect(u['p-bob'].overWeeks).toBe(0) // expected never exceeds capacity
-    expect(u['p-bob'].weighted).toBe(1_000_000) // O2 influence
+    expect(u['p-bob'].weighted).toBe(500_000) // O2 split 2 ways
     expect(u['p-bob'].booked).toBe(0)
   })
   it('delivery people are excluded from energy utilization', () => {

@@ -297,6 +297,9 @@ a { color: var(--blue); }
 .signal-row:hover { background: var(--surface-2); }
 .signal-name { font-weight: 550; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .signal-row .num { flex: 0 0 auto; font-size: 11.5px; }
+/* Stacked signal row: role + FTE on top, the full PROJECT NAME below (never truncated). */
+.signal-row.stack { flex-direction: column; align-items: flex-start; gap: 2px; }
+.signal-row.stack .signal-proj { font-size: 12px; color: var(--text-dim); white-space: normal; line-height: 1.25; }
 
 /* calendar pan control (Gantt header) */
 .pan { display: inline-flex; align-items: center; gap: 3px; }
