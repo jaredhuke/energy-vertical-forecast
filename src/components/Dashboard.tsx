@@ -62,6 +62,9 @@ export function Dashboard() {
   const idlePeople = utilRows.filter((r) => r.idleWeeks === utilWeeks.length)
   const unstaffed = useMemo(() => unstaffedRoles(state), [state])
   const targetPct = Math.round(target * 100)
+  // Team capacity target for the demand chart: total roster capacity × target %.
+  // e.g. 10 people at 1.0 capacity with an 80% target = 8.0 target FTE.
+  const targetFte = useMemo(() => roster.reduce((s, p) => s + (p.capacity || 0), 0) * target, [roster, target])
 
   const { weeks } = useMemo(() => horizon(opportunities), [opportunities])
   const demand = useMemo(() => demandByWeek(state, weeks), [state, weeks])
@@ -212,13 +215,13 @@ export function Dashboard() {
           <div className="legend">
             <span><span className="swatch signed" /> Signed / committed</span>
             <span><span className="swatch forecast" /> Forecast</span>
-            <span className="faint" style={{ fontSize: 11 }}>stacked on top · fainter = less likely to close</span>
+            <span style={{ color: 'var(--blue)' }}>— — Target {targetFte.toFixed(1)} FTE <span className="faint">({targetPct}% of {roster.length})</span></span>
           </div>
         </div>
         {opportunities.length === 0 ? (
           <div className="empty">No opportunities yet. Add one under the Opportunities tab.</div>
         ) : (
-          <WeeklyDemandChart weeks={stack} />
+          <WeeklyDemandChart weeks={stack} target={targetFte} />
         )}
       </div>
 

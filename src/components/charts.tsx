@@ -7,7 +7,7 @@ const FORECAST_RGB = '37, 99, 235' // blue — forecast; opacity encodes likelih
 // ---- Weekly demand: one stacked bar per week. Green signed/committed floor at
 //      the bottom (certain), forecast stacked on top and fading with its close
 //      % likelihood — most likely just above the floor, longest-shots at the top.
-export function WeeklyDemandChart({ weeks }: { weeks: WeekStack[] }) {
+export function WeeklyDemandChart({ weeks, target }: { weeks: WeekStack[]; target?: number }) {
   const H = 200
   const padT = 12
   const padB = 34
@@ -17,12 +17,16 @@ export function WeeklyDemandChart({ weeks }: { weeks: WeekStack[] }) {
   const plotH = H - padT - padB
 
   const maxVal = Math.max(1, ...weeks.map((d) => d.total))
-  const niceMax = Math.ceil(maxVal)
+  // Keep the target line on-scale even when demand is below it.
+  const niceMax = Math.ceil(Math.max(maxVal, target || 0))
   const y = (v: number) => padT + plotH - (v / niceMax) * plotH
   const hgt = (v: number) => (v / niceMax) * plotH
 
   const barW = 22
-  const gridlines = Array.from({ length: niceMax + 1 }, (_, i) => i)
+  // Cap the number of gridlines/labels so a tall target doesn't spam the axis.
+  const step = niceMax > 12 ? Math.ceil(niceMax / 10) : 1
+  const gridlines = Array.from({ length: Math.floor(niceMax / step) + 1 }, (_, i) => i * step)
+  const showTarget = typeof target === 'number' && target > 0
 
   return (
     <div style={{ overflowX: 'auto' }}>
@@ -77,6 +81,16 @@ export function WeeklyDemandChart({ weeks }: { weeks: WeekStack[] }) {
             </g>
           )
         })}
+        {/* Team capacity target = Σ(roster capacity) × utilization target. A
+            dashed line: bars above it clear the target, bars below fall short. */}
+        {showTarget && (
+          <g>
+            <line x1={padL} x2={W} y1={y(target!)} y2={y(target!)} stroke="var(--blue)" strokeWidth={1.5} strokeDasharray="5 4" />
+            <text x={padL + 4} y={y(target!) - 4} fontSize="9" fontWeight={600} fill="var(--blue)">
+              Target {target!.toFixed(1)} FTE
+            </text>
+          </g>
+        )}
       </svg>
     </div>
   )

@@ -1,11 +1,10 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useStore } from './store/useStore'
 import type { View } from './store/useStore'
-import { exportCsv, exportJson, loadEncryptedDataset, loadPublishedDataset, loadSeed, toBundle, WrongPasswordError } from './lib/persistence'
+import { exportCsv, exportJson, loadPublishedDataset, loadSeed, toBundle } from './lib/persistence'
 import { fsSupported, pickDirectory, readBundle, writeBundle } from './lib/fs'
 import { downloadTemplate, parseOpportunityWorkbook, type ImportDraft } from './lib/xlsxImport'
 import { ImportExcel } from './components/ImportExcel'
-import { LockScreen } from './components/LockScreen'
 import { Modal } from './components/Modal'
 import { Dashboard } from './components/Dashboard'
 import { OpportunitiesView } from './components/OpportunitiesView'
@@ -75,10 +74,6 @@ export default function App() {
   const selectedPersonId = useStore((s) => s.selectedPersonId)
   const selectPerson = useStore((s) => s.selectPerson)
   const selectedPerson = roster.find((p) => p.id === selectedPersonId) || null
-  const passphrase = useStore((s) => s.passphrase)
-  const setPassphrase = useStore((s) => s.setPassphrase)
-  const demoMode = useStore((s) => s.demoMode)
-  const setDemoMode = useStore((s) => s.setDemoMode)
 
   const fileInput = useRef<HTMLInputElement>(null)
   const excelInput = useRef<HTMLInputElement>(null)
@@ -92,35 +87,18 @@ export default function App() {
     return () => clearTimeout(t)
   }, [lastDeleted, clearUndo])
 
-  // On open, if the team password is stored, decrypt the latest shared dataset
-  // (silent on failure so a transient error just leaves the last local copy).
-  // With no password the app stays locked (LockScreen) until one is entered.
+  // First run: read the published dataset (the public data the site is hosted
+  // with); fall back to the build-time bundled seed when offline / on file://.
+  // Any locally-persisted working data (localStorage) takes precedence.
   useEffect(() => {
-    if (passphrase) {
-      loadEncryptedDataset(passphrase)
-        .then((bundle) => {
-          if (bundle.opportunities.length || bundle.roster.length) {
-            replaceAll(bundle)
-            markSaved()
-          }
-        })
-        .catch(() => {
-          /* keep the persisted local copy; the user can re-enter the password */
-        })
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
-  // Demo mode (no key): load the public/seed data so the demo has something to show.
-  useEffect(() => {
-    if (demoMode && !passphrase && roster.length === 0 && opportunities.length === 0) {
+    if (roster.length === 0 && opportunities.length === 0) {
       loadPublishedDataset().then((b) => {
         if (b && (b.opportunities.length || b.roster.length)) replaceAll(b)
         else loadSeed().then((s) => s && replaceAll(s))
       })
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [demoMode])
+  }, [])
 
   async function connect() {
     const handle = await pickDirectory()
@@ -171,25 +149,14 @@ export default function App() {
     }
   }
 
-  // ---- shared password: re-fetch the latest published encrypted dataset ----
-  async function passLoad() {
-    if (!passphrase) return
-    if (dirty && !confirm('Load the latest shared data? Your unsaved local changes will be replaced.')) return
-    try {
-      setBusy('load')
-      const b = await loadEncryptedDataset(passphrase)
-      replaceAll(b)
-      markSaved()
-    } catch (e) {
-      alert(e instanceof WrongPasswordError ? 'The team password no longer opens the data — the owner may have changed it.' : (e as Error).message)
-    } finally {
-      setBusy('')
-    }
-  }
-
-  function logout() {
-    setPassphrase(null)
-    setDemoMode(false)
+  // Pull the latest published dataset on demand (replaces the working copy).
+  async function loadPublished() {
+    if (dirty && !confirm('Load the latest published data? Your unsaved local changes will be replaced.')) return
+    setBusy('load')
+    const b = await loadPublishedDataset()
+    setBusy('')
+    if (b) replaceAll(b)
+    else alert('No published dataset found.')
   }
 
   function onImportFile(e: React.ChangeEvent<HTMLInputElement>) {
@@ -245,11 +212,6 @@ export default function App() {
     { id: 'roster', label: 'Roster & funnel', count: roster.length },
   ]
 
-  // Locked front door: no team password and not viewing the demo → the shared
-  // workspace stays hidden behind the LockScreen (real: a wrong password can't
-  // decrypt the data). Placed after all hooks so hook order is stable.
-  if (!passphrase && !demoMode) return <LockScreen />
-
   return (
     <div className="app">
       <header className="header">
@@ -257,7 +219,7 @@ export default function App() {
           <div className="brand">
             <span className="dot" />
             <h1>Energy Vertical</h1>
-            <span className="sub">{demoMode ? 'Presales Forecast · Demo' : 'Presales Forecast'}</span>
+            <span className="sub">Presales Forecast</span>
           </div>
 
           <div className="spacer" />
@@ -268,14 +230,10 @@ export default function App() {
             <input value={editor} onChange={(e) => setEditor(e.target.value)} style={{ width: 90 }} />
           </label>
 
-          {/* Signed in with the team password → the shared encrypted dataset is
-              the source of truth (the owner republishes updates). Otherwise the
-              optional local/SharePoint folder, else Sign in. */}
-          {passphrase ? (
-            <button className="btn ghost" onClick={passLoad} disabled={busy === 'load'} title="Re-fetch the latest shared forecast">
-              {busy === 'load' ? 'Loading…' : 'Load ↓'} <span className="dirlabel">shared</span>
-            </button>
-          ) : fsSupported() && dirHandle ? (
+          {/* Optional shared folder (OneDrive-synced SharePoint or a git clone)
+              for Load/Save; otherwise a connect button. No sign-in — the app
+              opens straight to the data. */}
+          {fsSupported() && dirHandle ? (
             <>
               <button className="btn ghost" onClick={load} disabled={busy === 'load'} title="Re-read the shared folder (pull teammates' changes — OneDrive sync or git pull)">
                 {busy === 'load' ? 'Loading…' : 'Load ↓'}
@@ -284,20 +242,17 @@ export default function App() {
                 {dirty && <span className="dirty-dot" />} {busy === 'save' ? 'Saving…' : 'Save ↑'} <span className="dirlabel">{dirName}</span>
               </button>
             </>
-          ) : (
-            <button className="btn primary" onClick={() => setDemoMode(false)} title="Sign in with your team access key to load the shared data">
-              Sign in
+          ) : fsSupported() ? (
+            <button className="btn ghost" onClick={connect} title="Point at a shared data folder — a OneDrive-synced SharePoint library or a cloned git repo">
+              Connect shared folder
             </button>
-          )}
+          ) : null}
 
           <DataMenu
             items={[
-              ...(passphrase
-                ? [{ label: 'Log out', onPick: logout }]
-                : [{ label: 'Sign in', onPick: () => setDemoMode(false) }]),
-              ...(fsSupported() && !passphrase ? [{ label: dirHandle ? `Folder: ${dirName}` : 'Connect a local/SharePoint folder', onPick: connect }] : []),
               { label: 'Import from Excel…', onPick: () => excelInput.current?.click() },
               { label: 'Download Excel template', onPick: () => downloadTemplate(stages, roster) },
+              { label: 'Load published data', onPick: loadPublished, disabled: busy === 'load' },
               { label: 'Import JSON…', onPick: () => fileInput.current?.click() },
               { label: 'Export CSV', onPick: () => exportCsv(useStore.getState()) },
               { label: 'Export JSON', onPick: () => exportJson(useStore.getState()) },
