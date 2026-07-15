@@ -39,7 +39,7 @@ export function PersonDetail({ person, onClose }: { person: Person; onClose?: ()
   )
   const weeks = useMemo(() => weeksThroughYear(new Date().getFullYear() + 1), [])
   const row = useMemo(
-    () => rosterUtilization(state, weeks, target, Math.min(52, weeks.length)).find((r) => r.person.id === person.id),
+    () => rosterUtilization(state, weeks, target).find((r) => r.person.id === person.id),
     [state, weeks, target, person.id],
   )
   const targetPct = Math.round(target * 100)

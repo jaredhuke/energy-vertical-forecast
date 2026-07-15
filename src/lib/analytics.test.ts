@@ -19,9 +19,10 @@ import {
   revenueByEnergyRole,
   energyUtilization,
   rosterUtilization,
+  activeHorizonWeeks,
   utilBand,
 } from './analytics'
-import { addWeeks, weekKeyOf, mondayOf, dateKey } from './weeks'
+import { addWeeks, weekKeyOf, mondayOf, dateKey, weekRange } from './weeks'
 
 // ===========================================================================
 // GOLDEN FIXTURE — every number below is hand-computed in the comments so the
@@ -290,6 +291,45 @@ describe('rosterUtilization — the heatmap numbers (EXPECTED / weighted)', () =
     const r = rosterUtilization(st, WEEKS, 0.8)[0]
     expect(Number.isFinite(r.weekly[0].util)).toBe(true)
     expect(Number.isFinite(r.avgUtil)).toBe(true)
+  })
+})
+
+describe('rosterUtilization — planned mode + active-horizon window (Part 1)', () => {
+  it("planned mode shows RAW booked FTE (Alice W1 = 1.0), expected shows weighted (0.75)", () => {
+    const p = Object.fromEntries(rosterUtilization(state, WEEKS, 0.8, 'planned').map((r) => [r.person.id, r]))
+    expect(p['p-alice'].weekly.map((c) => c.util)).toEqual([0.5, 1.0, 0.5, 0]) // committed ÷ cap
+    expect(p['p-alice'].peakUtil).toBeCloseTo(1.0, 10)
+    // Bob planned W0 = 0.5 internal / 0.5 cap = 100% (expected mode is the same here)
+    expect(p['p-bob'].weekly[0].util).toBeCloseTo(1.0, 10)
+  })
+  it('active-horizon window: work only in the first 2 of 26 weeks averages over ~a quarter, not 26', () => {
+    const longWeeks = weekRange('2026-01-05', 26)
+    const st: ForecastState = {
+      ...state,
+      roster: [{ ...roster[0], id: 'p-x', capacity: 1 }],
+      opportunities: [{
+        id: 'ox', name: '', client: '', type: 'external', booking: 'signed', stageId: 'closed',
+        dealValue: 0, startWeek: '2026-01-05', durationWeeks: 2,
+        assignments: [{ id: 'x', personId: 'p-x', role: 'X', group: 'energy', fte: { '0': 1, '1': 1 } }],
+      }],
+    }
+    // last staffed week index = 1 → window floored to 13 (a quarter), NOT 26.
+    expect(activeHorizonWeeks(st, longWeeks)).toBe(13)
+    const row = rosterUtilization(st, longWeeks, 0.8)[0]
+    expect(row.avgUtil).toBeCloseTo(2 / 13, 6) // over 13 weeks, not the diluted 2/26
+  })
+  it('active-horizon window extends to the last staffed week when the pipeline is longer than a quarter', () => {
+    const longWeeks = weekRange('2026-01-05', 40)
+    const st: ForecastState = {
+      ...state,
+      roster: [{ ...roster[0], id: 'p-x', capacity: 1 }],
+      opportunities: [{
+        id: 'ox', name: '', client: '', type: 'external', booking: 'signed', stageId: 'closed',
+        dealValue: 0, startWeek: '2026-01-05', durationWeeks: 20,
+        assignments: [{ id: 'x', personId: 'p-x', role: 'X', group: 'energy', fte: Object.fromEntries(Array.from({ length: 20 }, (_, i) => [String(i), 1])) }],
+      }],
+    }
+    expect(activeHorizonWeeks(st, longWeeks)).toBe(20) // through the last staffed week
   })
 })
 

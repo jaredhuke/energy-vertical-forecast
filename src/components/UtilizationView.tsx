@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { useStore } from '../store/useStore'
 import type { ForecastState } from '../types'
-import { opportunityEndWeek, rosterUtilization, utilBand } from '../lib/analytics'
+import { activeHorizonWeeks, opportunityEndWeek, rosterUtilization, utilBand } from '../lib/analytics'
 import type { RosterUtilRow, RosterWeekCell } from '../lib/analytics'
 import { isoWeekNum, parseKey, weekLabel, weeksThroughYear } from '../lib/weeks'
 import { fmtPct } from '../lib/format'
@@ -40,6 +40,7 @@ export function UtilizationView() {
   const setTarget = useStore((s) => s.setUtilizationTarget)
 
   const [grain, setGrain] = useState<'week' | 'month'>('week')
+  const [mode, setMode] = useState<'expected' | 'planned'>('expected')
   const colW = grain === 'month' ? 60 : 40
 
   const state = useMemo<ForecastState>(
@@ -71,12 +72,15 @@ export function UtilizationView() {
   }, [availW, colW, grain, opportunities])
   const weeks = useMemo(() => weeksThroughYear(throughYear), [throughYear])
 
-  // Summary numbers cover the next 12 months so the multi-year grid doesn't
-  // dilute averages with far-future idle weeks.
-  const STATS_WEEKS = 52
+  // Summary numbers cover the ACTIVE/staffed horizon (through the last week
+  // anyone is booked) so trailing far-future idle weeks don't dilute them to
+  // near-zero. `mode` switches the cell between expected (weighted) and planned
+  // (raw FTE if everything lands).
+  const statsWin = useMemo(() => activeHorizonWeeks(state, weeks), [state, weeks])
+  const horizonLabel = weeks[statsWin - 1] ? weekLabel(weeks[statsWin - 1]) : ''
   const rows = useMemo(
-    () => rosterUtilization(state, weeks, target, Math.min(STATS_WEEKS, weeks.length)),
-    [state, weeks, target],
+    () => rosterUtilization(state, weeks, target, mode, statsWin),
+    [state, weeks, target, mode, statsWin],
   )
 
   // Month buckets: consecutive weeks grouped by their Monday's month + year.
@@ -123,16 +127,22 @@ export function UtilizationView() {
     <div className="grid" style={{ gap: 16 }}>
       <div className="hint">
         Utilization is the <b>people × projects</b> view — the transpose of the Opportunities timeline (edit FTE there;
-        this reads from the same data, internal projects included). Each cell is <b>forward (expected) utilization</b> =
-        FTE × close % ÷ capacity, so 1&nbsp;FTE on a 50%-likely deal reads 50%; signed &amp; internal count at 100%.
-        Bands vs your <b>utilization target</b>: below target = under-utilized (blue), target→capacity = on target (green),
-        over capacity = over-allocated (red). Colour strength = booking certainty. Click a name for that person's detail.
+        this reads from the same data, internal projects included). Toggle <b>Expected</b> (FTE × close %, risk-adjusted —
+        1&nbsp;FTE on a 50%-likely deal reads 50%) vs <b>Planned</b> (raw FTE if every deal lands — 1&nbsp;FTE reads 100%);
+        signed &amp; internal count at 100% either way. Bands vs your <b>utilization target</b>: below = under-utilized (blue),
+        target→capacity = on target (green), over capacity = over-allocated (orange, marked&nbsp;!). Colour strength = booking
+        certainty. Averages cover the <b>staffed horizon</b> (through the last booked week) so empty far-future weeks don't
+        drag them down. Click a name for that person's detail.
       </div>
 
       <div className="card" ref={cardRef}>
         <div className="h-row">
           <h2>Utilization heatmap — through {throughYear}</h2>
           <div className="row wrap" style={{ gap: 14 }}>
+            <div className="seg" title="Expected = FTE × close % (risk-adjusted). Planned = raw FTE if every deal lands.">
+              <button className={mode === 'expected' ? 'on' : ''} aria-pressed={mode === 'expected'} onClick={() => setMode('expected')}>Expected</button>
+              <button className={mode === 'planned' ? 'on' : ''} aria-pressed={mode === 'planned'} onClick={() => setMode('planned')}>Planned</button>
+            </div>
             <div className="seg">
               <button className={grain === 'week' ? 'on' : ''} aria-pressed={grain === 'week'} onClick={() => setGrain('week')}>Weekly</button>
               <button className={grain === 'month' ? 'on' : ''} aria-pressed={grain === 'month'} onClick={() => setGrain('month')}>Monthly</button>
@@ -154,8 +164,8 @@ export function UtilizationView() {
 
         <div className="kpis" style={{ marginBottom: 14 }}>
           <div className="kpi"><div className="label">People</div><div className="value num">{rows.length}</div></div>
-          <div className="kpi"><div className="label">Roster average utilization</div><div className="value num" style={{ color: rosterAvg < target ? 'var(--blue)' : rosterAvg > 1.02 ? 'var(--warn)' : 'var(--good)' }}>{fmtPct(rosterAvg)}</div><div className="delta flat">target {targetPct}% · next 12 months</div></div>
-          <div className="kpi"><div className="label">Below target</div><div className="value num" style={{ color: belowTarget ? 'var(--blue)' : 'var(--good)' }}>{belowTarget}</div><div className="delta flat">average under {targetPct}% · next 12 months</div></div>
+          <div className="kpi"><div className="label">Roster average · {mode}</div><div className="value num" style={{ color: rosterAvg < target ? 'var(--blue)' : rosterAvg > 1.02 ? 'var(--warn)' : 'var(--good)' }}>{fmtPct(rosterAvg)}</div><div className="delta flat">target {targetPct}% · through {horizonLabel}</div></div>
+          <div className="kpi"><div className="label">Below target</div><div className="value num" style={{ color: belowTarget ? 'var(--blue)' : 'var(--good)' }}>{belowTarget}</div><div className="delta flat">avg under {targetPct}% · through {horizonLabel}</div></div>
           <div className="kpi"><div className="label">Over-allocated</div><div className="value num" style={{ color: overPeople ? 'var(--warn)' : 'var(--good)' }}>{overPeople}</div><div className="delta flat">peak &gt; 100%</div></div>
         </div>
 
@@ -217,7 +227,7 @@ export function UtilizationView() {
         <div className="hint" style={{ marginTop: 10 }}>
           Edit allocations in the <button className="linklike" style={{ color: 'var(--blue)', fontWeight: 500 }} onClick={() => setView('opportunities')}>Opportunities timeline</button> — this view updates live.
           The grid runs through {throughYear} (scroll right; year boundaries are marked); the per-person averages and week
-          counts cover the <b>next 12 months</b> so far-future idle weeks don't dilute them.
+          counts cover the <b>staffed horizon through {horizonLabel}</b> so far-future idle weeks don't dilute them.
         </div>
       </div>
     </div>

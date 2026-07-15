@@ -404,18 +404,44 @@ export interface RosterUtilRow {
 }
 
 const OVER_CAP = 1.02 // above capacity → over-allocated (unsustainable)
+const MIN_STATS_WEEKS = 13 // don't average over less than a quarter
+
+/** How many weeks the summary stats should cover: from now through the LAST
+ *  week anyone in the roster is booked (so trailing empty far-future weeks
+ *  don't dilute the averages to near-zero), floored at one quarter and capped
+ *  at the grid. This is the "planned/staffed horizon". */
+export function activeHorizonWeeks(state: ForecastState, weeks: string[]): number {
+  const idx = new Map(weeks.map((w, i) => [w, i]))
+  let last = -1
+  for (const o of state.opportunities) {
+    const base = oppStartMonday(o)
+    for (const a of o.assignments) {
+      if (!a.personId) continue
+      for (let off = 0; off < o.durationWeeks; off++) {
+        if (!(a.fte[String(off)] > 0)) continue
+        const i = idx.get(addWeeks(base, off))
+        if (i != null && i > last) last = i
+      }
+    }
+  }
+  return Math.min(weeks.length, Math.max(MIN_STATS_WEEKS, last + 1))
+}
 
 /** Per-person weekly utilization + certainty across `weeks`, all roster people.
  *  Bands are relative to `target` (e.g. 0.8): below target = under-utilized,
  *  target..capacity = on target, above capacity = over-allocated.
- *  `statsWeeks` caps the window the summary numbers (average / over / under /
- *  idle / peak) are computed over, so a multi-year grid doesn't dilute them —
- *  the weekly cells themselves always span the full horizon. */
+ *  `mode`: 'expected' (default) weights each cell by close % (forward, risk-
+ *  adjusted — 1 FTE on a 50%-likely deal = 50%); 'planned' shows raw booked
+ *  FTE if everything lands (1 FTE = 100%). `statsWeeks` caps the window the
+ *  summary numbers (average / over / under / idle / peak) are computed over;
+ *  it defaults to the active/staffed horizon so dead far-future weeks don't
+ *  dilute — the weekly cells themselves always span the full grid. */
 export function rosterUtilization(
   state: ForecastState,
   weeks: string[],
   target: number,
-  statsWeeks: number = weeks.length,
+  mode: 'expected' | 'planned' = 'expected',
+  statsWeeks?: number,
 ): RosterUtilRow[] {
   const idx = new Map(weeks.map((w, i) => [w, i]))
   const committed = new Map<string, number[]>()
@@ -443,19 +469,20 @@ export function rosterUtilization(
       }
     }
   }
+  const win = statsWeeks ?? activeHorizonWeeks(state, weeks)
   const rows: RosterUtilRow[] = state.roster.map((p) => {
     const cap = p.capacity || 1
     const c = committed.get(p.id) ?? new Array(weeks.length).fill(0)
     const w = weighted.get(p.id) ?? new Array(weeks.length).fill(0)
     const weekly: RosterWeekCell[] = weeks.map((_, i) => ({
-      // Forward/expected utilization: FTE weighted by close % (signed & internal
-      // count at 100%). 1 FTE on a 50%-likely deal → 0.5 expected → 50% util.
-      util: w[i] / cap,
-      committed: c[i], // raw booked FTE (if everything lands), for the tooltip
+      // 'expected' = FTE × close % (forward, risk-adjusted); 'planned' = raw
+      // booked FTE (if everything lands). Opacity (certainty) always shows risk.
+      util: (mode === 'planned' ? c[i] : w[i]) / cap,
+      committed: c[i],
       certainty: c[i] > 0 ? w[i] / c[i] : 0,
     }))
-    // Summary numbers over the stats window only (the grid may extend years further).
-    const stats = weekly.slice(0, Math.max(1, Math.min(statsWeeks, weekly.length)))
+    // Summary numbers over the active/staffed window (not the dead far-future).
+    const stats = weekly.slice(0, Math.max(1, Math.min(win, weekly.length)))
     const avgUtil = stats.reduce((s, x) => s + x.util, 0) / (stats.length || 1)
     return {
       person: p,

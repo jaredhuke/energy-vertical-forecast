@@ -53,7 +53,7 @@ export function Dashboard() {
   // Staffing signals (forward/expected utilization, next 12 months).
   const utilWeeks = useMemo(() => weeksThroughYear(new Date().getFullYear() + 1), [])
   const utilRows = useMemo(
-    () => rosterUtilization(state, utilWeeks, target, Math.min(52, utilWeeks.length)),
+    () => rosterUtilization(state, utilWeeks, target), // expected mode, active-horizon window
     [state, utilWeeks, target],
   )
   const overUtil = utilRows.filter((r) => r.peakUtil > 1.02)
@@ -147,7 +147,7 @@ export function Dashboard() {
       </div>
 
       {/* Staffing signals — who needs work, who's overbooked, roles to fill */}
-      <div className="section-title" style={{ margin: '4px 0 0' }}>Staffing signals · next 12 months (forward utilization)</div>
+      <div className="section-title" style={{ margin: '4px 0 0' }}>Staffing signals · staffed horizon (expected utilization)</div>
       <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 16 }}>
         <div className="card">
           <div className="h-row"><h2>Unstaffed roles <span className="faint" style={{ letterSpacing: 0, textTransform: 'none' }}>{unstaffed.length}</span></h2></div>
