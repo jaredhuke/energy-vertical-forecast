@@ -10,6 +10,7 @@ import {
   horizon,
   personLoads,
   revenueTotals,
+  roleDemandVsCapacity,
   rolesImpacted,
   rosterUtilization,
   totals,
@@ -90,25 +91,29 @@ export function Dashboard() {
   const utils = useMemo(() => energyUtilization(state, weeks), [state, weeks])
   const avgPeak = utils.length ? utils.reduce((a, u) => a + u.peakPct, 0) / utils.length : 0
   const rev = useMemo(() => revenueTotals(state), [state])
+  // Capacity gaps — roles where demand exceeds roster capacity (links to Capacity view).
+  const capRows = useMemo(() => roleDemandVsCapacity(state, utilWeeks), [state, utilWeeks])
+  const rolesShort = capRows.filter((r) => r.shortWeeks > 0).length
+  const peakShortFte = capRows.reduce((s, r) => s + r.peakShort, 0)
 
   const energyRoles = roles.filter((r) => r.group === 'energy').map((r) => ({ label: r.role, value: r.weighted }))
   const deliveryRoles = roles.filter((r) => r.group === 'delivery').map((r) => ({ label: r.role, value: r.weighted }))
 
   return (
     <div className="grid" style={{ gap: 16 }}>
-      {/* Utilization — headline metrics */}
-      <div className="section-title" style={{ margin: 0 }}>Energy team utilization</div>
+      {/* Capacity & demand — headline metrics */}
+      <div className="section-title" style={{ margin: 0 }}>Capacity &amp; demand</div>
       <div className="kpis">
         <div className="kpi">
-          <div className="label">Average peak utilization</div>
+          <div className="label">Peak utilization · avg</div>
           <div className="value num" style={{ color: avgPeak > 1 ? 'var(--warn)' : 'var(--blue)' }}>{fmtPct(avgPeak)}</div>
-          <div className="delta flat">{utils.length} energy people</div>
+          <div className="delta flat">busiest week, averaged over {utils.length} energy people</div>
         </div>
-        <div className="kpi">
-          <div className="label">Over-allocated</div>
-          <div className="value num" style={{ color: over.length ? 'var(--warn)' : 'var(--good)' }}>{over.length}</div>
-          <div className="delta flat">{over.length ? 'above capacity' : 'all within capacity'}</div>
-        </div>
+        <button className="kpi kpi-link" onClick={() => setView('capacity')} title="Open the Capacity view">
+          <div className="label">Roles short</div>
+          <div className="value num" style={{ color: rolesShort ? 'var(--bad)' : 'var(--good)' }}>{rolesShort}</div>
+          <div className="delta flat">{rolesShort ? `${peakShortFte.toFixed(1)} FTE peak gap →` : 'demand within capacity'}</div>
+        </button>
         <div className="kpi">
           <div className="label">Weighted forecast · FTE-weeks</div>
           <div className="value num">{t.weighted.toFixed(1)}</div>

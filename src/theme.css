@@ -158,6 +158,8 @@ label.field { display: flex; flex-direction: column; gap: 4px; font-size: 12px; 
 /* ---- KPI tiles ---- */
 .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 14px; }
 .kpi { background: linear-gradient(180deg, #ffffff 0%, #fdfdfb 100%); border: 1px solid var(--border); border-radius: var(--r); padding: 14px 16px; box-shadow: var(--shadow); }
+.kpi.kpi-link { display: block; width: 100%; text-align: left; font: inherit; color: inherit; cursor: pointer; }
+.kpi.kpi-link:hover { border-color: var(--blue); }
 .kpi .label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-faint); }
 .kpi .value { font-size: 26px; font-weight: 600; margin-top: 4px; font-variant-numeric: tabular-nums; }
 .kpi .delta { font-size: 12px; margin-top: 3px; font-variant-numeric: tabular-nums; }

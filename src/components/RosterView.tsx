@@ -1,5 +1,6 @@
 import { useStore } from '../store/useStore'
 import type { Group, Person } from '../types'
+import { StagesView } from './StagesView'
 
 const LEVELS = ['Junior', 'Consultant', 'Senior', 'Lead', 'Principal', 'Sr Principal', 'Director']
 
@@ -75,6 +76,9 @@ export function RosterView() {
       </div>
       <RosterTable group="energy" />
       <RosterTable group="delivery" />
+
+      <div className="section-title" style={{ marginTop: 8 }}>Funnel stages &amp; close %</div>
+      <StagesView />
     </div>
   )
 }

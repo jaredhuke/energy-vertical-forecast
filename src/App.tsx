@@ -12,7 +12,6 @@ import { UtilizationView } from './components/UtilizationView'
 import { CapacityView } from './components/CapacityView'
 import { RevenueView } from './components/RevenueView'
 import { RosterView } from './components/RosterView'
-import { StagesView } from './components/StagesView'
 import { PersonDetail } from './components/PersonDetail'
 
 /** Compact dropdown for the data actions so the header stays ONE row of
@@ -209,8 +208,7 @@ export default function App() {
     { id: 'utilization', label: 'Utilization' },
     { id: 'capacity', label: 'Capacity' },
     { id: 'revenue', label: 'Revenue' },
-    { id: 'roster', label: 'Roster', count: roster.length },
-    { id: 'stages', label: 'Funnel' },
+    { id: 'roster', label: 'Roster & funnel', count: roster.length },
   ]
 
   return (
@@ -284,8 +282,7 @@ export default function App() {
         {view === 'utilization' && <UtilizationView />}
         {view === 'capacity' && <CapacityView />}
         {view === 'revenue' && <RevenueView />}
-        {view === 'roster' && <RosterView />}
-        {view === 'stages' && <StagesView />}
+        {(view === 'roster' || view === 'stages') && <RosterView />}
       </main>
 
       {excelDraft && (
