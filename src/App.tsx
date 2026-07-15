@@ -87,14 +87,6 @@ export default function App() {
     return () => clearTimeout(t)
   }, [lastDeleted, clearUndo])
 
-  // Escape closes the docked person-detail panel.
-  useEffect(() => {
-    if (!selectedPersonId) return
-    const h = (e: KeyboardEvent) => { if (e.key === 'Escape') selectPerson(null) }
-    window.addEventListener('keydown', h)
-    return () => window.removeEventListener('keydown', h)
-  }, [selectedPersonId, selectPerson])
-
   // First run: read the published dataset (the public data the site is hosted
   // with); fall back to the build-time bundled seed when offline / on file://.
   // Any locally-persisted working data (localStorage) takes precedence.
@@ -287,27 +279,24 @@ export default function App() {
         </nav>
       </header>
 
-      <div className={`app-body${selectedPerson ? ' has-panel' : ''}`}>
-        <main className="main">
-          {view === 'dashboard' && <Dashboard />}
-          {view === 'opportunities' && <OpportunitiesView />}
-          {view === 'utilization' && <UtilizationView />}
-          {view === 'capacity' && <CapacityView />}
-          {view === 'revenue' && <RevenueView />}
-          {(view === 'roster' || view === 'stages') && <RosterView />}
-        </main>
-
-        {/* Persistent docked detail — stays open while you click other names. */}
-        {selectedPerson && (
-          <aside className="detail-panel" role="region" aria-label={`${selectedPerson.name} detail`}>
-            <PersonDetail key={selectedPerson.id} person={selectedPerson} onClose={() => selectPerson(null)} />
-          </aside>
-        )}
-      </div>
+      <main className="main">
+        {view === 'dashboard' && <Dashboard />}
+        {view === 'opportunities' && <OpportunitiesView />}
+        {view === 'utilization' && <UtilizationView />}
+        {view === 'capacity' && <CapacityView />}
+        {view === 'revenue' && <RevenueView />}
+        {(view === 'roster' || view === 'stages') && <RosterView />}
+      </main>
 
       {excelDraft && (
         <Modal onClose={() => setExcelDraft(null)}>
           <ImportExcel draft={excelDraft.draft} fileName={excelDraft.fileName} onClose={() => setExcelDraft(null)} />
+        </Modal>
+      )}
+
+      {selectedPerson && (
+        <Modal wide onClose={() => selectPerson(null)}>
+          <PersonDetail key={selectedPerson.id} person={selectedPerson} onClose={() => selectPerson(null)} />
         </Modal>
       )}
 
