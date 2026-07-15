@@ -26,6 +26,7 @@ export function GanttView() {
   const roster = useStore((s) => s.roster)
   const selectedId = useStore((s) => s.selectedOpportunityId)
   const select = useStore((s) => s.selectOpportunity)
+  const selectPerson = useStore((s) => s.selectPerson)
   const slide = useStore((s) => s.slideOpportunity)
   const removeAssignment = useStore((s) => s.removeAssignment)
   const addAssignment = useStore((s) => s.addAssignment)
@@ -383,7 +384,14 @@ export function GanttView() {
                           <tr key={a.id} className={`rolerow ${isSel ? 'sel' : ''}`}>
                             <td className={`lab role team-${a.group}`}>
                               <span className="role-name">
-                                <span className="role-text">{person ? person.name : a.role}<span className="faint"> {person ? person.role : 'role'}</span></span>
+                                {person ? (
+                                  <span className="role-text">
+                                    <button className="linklike" style={{ color: 'var(--blue)', fontWeight: 600 }} title={`Open ${person.name}'s detail`} onClick={(e) => { e.stopPropagation(); selectPerson(person.id) }}>{person.name}</button>
+                                    <span className="faint"> {person.role}</span>
+                                  </span>
+                                ) : (
+                                  <span className="role-text">{a.role}<span className="faint"> role</span></span>
+                                )}
                               </span>
                               <span className="row" style={{ gap: 5, flex: '0 0 auto' }}>
                                 <span className={`teamtag ${a.group}`}>{a.group === 'energy' ? 'Energy' : 'Delivery'}</span>
